@@ -1,26 +1,123 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap');
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Warm cream/sand canvas background and deep charcoal/olive-tinted foreground */
+  --background: #fbf6ef;
+  --foreground: #22261e;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* Dashboard brand palette + shadows (Tailwind v4 CSS-first theme)
+   Earthy Warm: Sage/Olive scale with Terracotta & Warm Sand accents */
+@theme {
+  --color-brand-50: #f6f8f4;
+  --color-brand-100: #eaf0e6;
+  --color-brand-200: #d6e2cf;
+  --color-brand-300: #b5c9ab;
+  --color-brand-400: #8ea882;
+  --color-brand-500: #707c65;   /* Primary Sage / Olive Green */
+  --color-brand-600: #5d6953;   /* Deep Forest Olive */
+  --color-brand-700: #495341;
+  --color-brand-800: #384033;
+  --color-brand-900: #252b21;
+
+  /* Accent colors */
+  --color-accent-terracotta: #c85d44;
+  --color-accent-terracotta-light: #faeee5;
+  --color-accent-terracotta-border: #f3d7cb;
+  --color-accent-amber: #e4a853;
+  --color-accent-sand: #fdf8f0;
+  --color-accent-sand-border: #ece3d3;
+
+  /* Warm, organic shadows */
+  --shadow-soft: 0 20px 45px -15px rgba(56, 64, 51, 0.12);
+  --shadow-card: 0 8px 24px -6px rgba(56, 64, 51, 0.06);
+  --shadow-inner-glow: inset 0 1px 2px rgba(255, 255, 255, 0.5);
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  overscroll-behavior: none;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Hide default browser scrollbars where desired */
+::-webkit-scrollbar {
+  display: none;
+}
+
+/* Custom scrollbar styled with warm sage/olive tones */
+.custom-scroll::-webkit-scrollbar {
+  display: block;
+  height: 6px;
+  width: 6px;
+}
+.custom-scroll::-webkit-scrollbar-track {
+  background: rgba(112, 124, 101, 0.06);
+  border-radius: 9999px;
+}
+.custom-scroll::-webkit-scrollbar-thumb {
+  background: rgba(112, 124, 101, 0.28);
+  border-radius: 9999px;
+}
+.custom-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(112, 124, 101, 0.45);
+}
+
+/* Range sliders (mood + energy) updated to Earthy Sage thumb */
+.zen-range {
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+  height: 16px;
+  cursor: pointer;
+}
+.zen-range:focus {
+  outline: none;
+}
+.zen-range::-webkit-slider-runnable-track {
+  height: 8px;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.06);
+}
+.zen-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  margin-top: -4px;
+  border-radius: 9999px;
+  background: #707c65; /* Matches brand-500 Sage */
+  border: 2px solid #fff;
+  box-shadow: 0 2px 6px rgba(56, 64, 51, 0.25);
+}
+.zen-range::-moz-range-track {
+  height: 8px;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.92);
+}
+.zen-range::-moz-range-thumb {
+  width: 12px;
+  height: 12px;
+  border-radius: 9999px;
+  background: #707c65;
+  border: 2px solid #fff;
+  box-shadow: 0 2px 6px rgba(56, 64, 51, 0.25);
 }
