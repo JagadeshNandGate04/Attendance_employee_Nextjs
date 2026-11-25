@@ -1,9 +1,11 @@
 'use client';
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useSyncExternalStore } from 'react';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
-import { fetchMyDashboard } from '../store/dashboard/dashboardSlice';
+import { fetchMyBirthdays, fetchMyDashboard } from '../store/dashboard/dashboardSlice';
+import { isActiveAnnouncementNotification } from '../store/notifications/notificationSlice';
 import TopNav from '../components/topNavBar';
+import BirthdayCalendar from '../components/BirthdayCalendar';
 
 /* ------------------------------------------------------------------ */
 /* DATA                                                                */
@@ -45,6 +47,10 @@ const MOODS = [
   { emoji: '🙂', label: 'Content', quote: '“Keep your face always toward the sunshine, and shadows will fall behind you.” — Walt Whitman' },
   { emoji: '🤩', label: 'Energized', quote: '“Energy flows where attention goes. Harness today’s momentum.”' },
 ];
+
+const subscribeToHydration = () => () => {};
+const getClientHydrationSnapshot = () => true;
+const getServerHydrationSnapshot = () => false;
 
 type Question = { q: string; options: string[]; answer: number; why: string };
 
@@ -372,7 +378,7 @@ function PatternMatch() {
 }
 
 /* ------------------------------------------------------------------ */
-/* GAME ZONE (sidebar + inline play panel)                             */
+/* GAME ZONE (compact icon row; game opens only when clicked)          */
 /* ------------------------------------------------------------------ */
 
 const GAME_TABS = [
@@ -387,69 +393,202 @@ function GameZone({ game, onGameChange }: { game: string | null; onGameChange: (
   const current = GAME_TABS.find((g) => g.id === game);
 
   return (
-    <section className="grid grid-cols-1 overflow-hidden rounded-[28px] border border-[#ECE4D6] bg-white shadow-sm lg:grid-cols-[280px_1fr]">
-      {/* SIDEBAR */}
-      <aside className="flex flex-col gap-4 bg-[#333B2E] p-5 text-white" aria-label="Game list">
-        <div>
-          <h3 className="text-base font-black sm:text-lg">Mindfulness Break</h3>
-          <p className="text-sm text-[#B1BFA6]">Pick a quick game to reset your focus.</p>
+    <section className="overflow-hidden rounded-[28px] border border-[#ECE4D6] bg-white shadow-sm" aria-label="Mindfulness break games">
+      {/* COMPACT ICON ROW */}
+      <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3 bg-[#333B2E] px-5 py-3.5 text-white">
+        <div className="flex items-center gap-3">
+          <span className="text-xl" aria-hidden="true">🪷</span>
+          <div>
+            <h3 className="text-base font-black leading-tight sm:text-lg">Mindfulness Break</h3>
+            <p className="text-xs text-[#B1BFA6] sm:text-sm">Pick a quick game to reset your focus.</p>
+          </div>
         </div>
 
-        <ul className="flex gap-2 overflow-x-auto pb-1 lg:flex-col lg:overflow-visible lg:pb-0">
+        <ul className="flex items-center gap-2 sm:gap-3">
           {GAME_TABS.map((g) => {
             const active = game === g.id;
             return (
-              <li key={g.id} className="shrink-0 lg:shrink">
+              <li key={g.id} className="group relative">
                 <button
                   type="button"
                   onClick={() => onGameChange(active ? null : g.id)}
                   aria-pressed={active}
-                  className={`flex w-full items-center gap-3 rounded-2xl p-2.5 text-left transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#E3BF96] ${
-                    active ? 'bg-[#E3BF96] text-stone-900' : 'bg-white/10 text-white hover:bg-white/15'
+                  aria-label={`${g.label}: ${g.sub}`}
+                  className={`flex h-11 w-11 items-center justify-center rounded-2xl text-xl transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#E3BF96] sm:h-12 sm:w-12 sm:text-2xl ${
+                    active ? 'scale-105 bg-[#E3BF96] shadow-md ring-2 ring-white/60' : 'bg-white/10 hover:bg-white/20'
                   }`}
                 >
-                  <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-xl ${active ? 'bg-white/70' : 'bg-white/10'}`} aria-hidden="true">
-                    {g.emoji}
-                  </span>
-                  <span className="min-w-0">
-                    <span className="block whitespace-nowrap text-sm font-bold lg:whitespace-normal">{g.label}</span>
-                    <span className={`hidden text-xs lg:block ${active ? 'text-stone-700' : 'text-[#B1BFA6]'}`}>{g.sub}</span>
-                  </span>
-                  {active && <span className="ml-auto hidden h-2 w-2 shrink-0 rounded-full bg-[#C85D44] lg:block" aria-label="Playing" />}
+                  <span aria-hidden="true">{g.emoji}</span>
                 </button>
+                {active && <span className="absolute -bottom-1.5 left-1/2 h-1.5 w-1.5 -translate-x-1/2 rounded-full bg-[#C85D44]" aria-hidden="true" />}
+                <span
+                  role="tooltip"
+                  className="pointer-events-none absolute left-1/2 top-full z-20 mt-2 -translate-x-1/2 whitespace-nowrap rounded-lg bg-stone-900 px-2.5 py-1 text-xs font-semibold text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100 group-focus-within:opacity-100"
+                >
+                  {g.label}
+                </span>
               </li>
             );
           })}
         </ul>
-      </aside>
-
-      {/* PLAY PANEL */}
-      <div className="min-h-[320px] p-5 sm:p-6">
-        {current ? (
-          <>
-            <div className="mb-5 flex items-center justify-between border-b border-[#F7F3EB] pb-3">
-              <div className="flex items-center gap-3">
-                <span className="text-2xl" aria-hidden="true">{current.emoji}</span>
-                <h4 className="text-lg font-black text-stone-900 sm:text-xl">{current.label}</h4>
-              </div>
-              <button type="button" onClick={() => onGameChange(null)} className="text-sm font-bold text-stone-400 hover:text-stone-700">
-                Close
-              </button>
-            </div>
-            {game === 'number' && <NumberPuzzle />}
-            {game === 'brain' && <QuizGame key="brain" questions={BRAIN_QUESTIONS} />}
-            {game === 'js' && <QuizGame key="js" questions={JS_QUESTIONS} />}
-            {game === 'java' && <QuizGame key="java" questions={JAVA_QUESTIONS} />}
-            {game === 'pattern' && <PatternMatch />}
-          </>
-        ) : (
-          <div className="flex h-full min-h-[280px] flex-col items-center justify-center gap-2 text-center">
-            <span className="text-4xl" aria-hidden="true">🪷</span>
-            <p className="font-black text-stone-900">Take two minutes for yourself</p>
-            <p className="max-w-xs text-sm text-stone-500">Choose a game from the list and it will open right here.</p>
-          </div>
-        )}
       </div>
+
+      {/* PLAY PANEL: rendered only when a game is selected */}
+      {current && (
+        <div className="p-5 sm:p-6">
+          <div className="mb-5 flex items-center justify-between border-b border-[#F7F3EB] pb-3">
+            <div className="flex items-center gap-3">
+              <span className="text-2xl" aria-hidden="true">{current.emoji}</span>
+              <h4 className="text-lg font-black text-stone-900 sm:text-xl">{current.label}</h4>
+            </div>
+            <button
+              type="button"
+              onClick={() => onGameChange(null)}
+              aria-label={`Close ${current.label}`}
+              className="inline-flex items-center gap-1.5 rounded-full border border-[#ECE4D6] px-3.5 py-1.5 text-sm font-bold text-stone-500 transition hover:border-[#C85D44] hover:text-[#C85D44]"
+            >
+              <span aria-hidden="true">✕</span>
+              Close
+            </button>
+          </div>
+          {game === 'number' && <NumberPuzzle />}
+          {game === 'brain' && <QuizGame key="brain" questions={BRAIN_QUESTIONS} />}
+          {game === 'js' && <QuizGame key="js" questions={JS_QUESTIONS} />}
+          {game === 'java' && <QuizGame key="java" questions={JAVA_QUESTIONS} />}
+          {game === 'pattern' && <PatternMatch />}
+        </div>
+      )}
+    </section>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* BIRTHDAY SECTION (animated decoration around BirthdayCalendar)      */
+/* ------------------------------------------------------------------ */
+
+const BALLOONS = [
+  { color: '#C85D44', left: '4%', delay: '0s', duration: '7s' },
+  { color: '#E3BF96', left: '14%', delay: '1.8s', duration: '8.5s' },
+  { color: '#848F76', left: '78%', delay: '0.9s', duration: '7.5s' },
+  { color: '#D9B288', left: '88%', delay: '2.6s', duration: '9s' },
+  { color: '#F2A48F', left: '95%', delay: '0.4s', duration: '8s' },
+];
+
+const CONFETTI = [
+  { color: '#C85D44', left: '8%', delay: '0s', duration: '5.5s' },
+  { color: '#E3BF96', left: '18%', delay: '1.2s', duration: '6.5s' },
+  { color: '#848F76', left: '28%', delay: '2.4s', duration: '5s' },
+  { color: '#D9B288', left: '38%', delay: '0.6s', duration: '6s' },
+  { color: '#F2A48F', left: '48%', delay: '3s', duration: '5.8s' },
+  { color: '#5D6953', left: '58%', delay: '1.8s', duration: '6.2s' },
+  { color: '#C85D44', left: '68%', delay: '0.3s', duration: '5.2s' },
+  { color: '#E3BF96', left: '76%', delay: '2.1s', duration: '6.8s' },
+  { color: '#848F76', left: '84%', delay: '3.4s', duration: '5.4s' },
+  { color: '#D9B288', left: '92%', delay: '1s', duration: '6.1s' },
+];
+
+function BirthdayStyles() {
+  return (
+    <style>{`
+      @keyframes bd-balloon-rise {
+        0%   { transform: translateY(40px) rotate(-4deg); opacity: 0; }
+        15%  { opacity: 0.9; }
+        50%  { transform: translateY(-40px) rotate(4deg); }
+        100% { transform: translateY(-120px) rotate(-4deg); opacity: 0; }
+      }
+      @keyframes bd-confetti-fall {
+        0%   { transform: translateY(-20px) rotate(0deg); opacity: 0; }
+        15%  { opacity: 1; }
+        100% { transform: translateY(170px) rotate(360deg); opacity: 0; }
+      }
+      @keyframes bd-bounce {
+        0%, 100% { transform: translateY(0) scale(1); }
+        40%      { transform: translateY(-8px) scale(1.06); }
+        60%      { transform: translateY(0) scale(0.97); }
+      }
+      @keyframes bd-wiggle {
+        0%, 100% { transform: rotate(0deg); }
+        20%      { transform: rotate(-12deg); }
+        40%      { transform: rotate(10deg); }
+        60%      { transform: rotate(-6deg); }
+        80%      { transform: rotate(4deg); }
+      }
+      @keyframes bd-flicker {
+        0%, 100% { transform: scale(1) translateY(0); opacity: 1; }
+        50%      { transform: scale(1.2) translateY(-2px); opacity: 0.8; }
+      }
+      @keyframes bd-twinkle {
+        0%, 100% { transform: scale(0.8) rotate(0deg); opacity: 0.5; }
+        50%      { transform: scale(1.2) rotate(20deg); opacity: 1; }
+      }
+      .bd-balloon  { animation: bd-balloon-rise var(--dur, 8s) ease-in-out var(--delay, 0s) infinite; }
+      .bd-confetti { animation: bd-confetti-fall var(--dur, 6s) linear var(--delay, 0s) infinite; }
+      .bd-cake     { animation: bd-bounce 2.4s ease-in-out infinite; }
+      .bd-gift     { animation: bd-wiggle 2.8s ease-in-out 0.4s infinite; transform-origin: 50% 90%; }
+      .bd-party    { animation: bd-wiggle 3.2s ease-in-out 1s infinite; transform-origin: 50% 90%; }
+      .bd-flame    { animation: bd-flicker 0.9s ease-in-out infinite; }
+      .bd-twinkle  { animation: bd-twinkle 2s ease-in-out infinite; }
+      @media (prefers-reduced-motion: reduce) {
+        .bd-balloon, .bd-confetti, .bd-cake, .bd-gift, .bd-party, .bd-flame, .bd-twinkle { animation: none; }
+        .bd-balloon, .bd-confetti { opacity: 0.35; }
+      }
+    `}</style>
+  );
+}
+
+function BirthdayDecor() {
+  return (
+    <div aria-hidden="true" className="pointer-events-none absolute inset-0 overflow-hidden">
+      {CONFETTI.map((c, i) => (
+        <span
+          key={`confetti-${i}`}
+          className="bd-confetti absolute top-0 block h-2.5 w-1.5 rounded-[2px]"
+          style={{ left: c.left, backgroundColor: c.color, ['--delay' as string]: c.delay, ['--dur' as string]: c.duration }}
+        />
+      ))}
+      {BALLOONS.map((b, i) => (
+        <span
+          key={`balloon-${i}`}
+          className="bd-balloon absolute bottom-0 flex flex-col items-center opacity-0"
+          style={{ left: b.left, ['--delay' as string]: b.delay, ['--dur' as string]: b.duration }}
+        >
+          <span className="block rounded-[50%_50%_50%_50%/60%_60%_40%_40%] shadow-sm" style={{ backgroundColor: b.color, width: 22, height: 28 }} />
+          <span className="block h-6 w-px bg-stone-400/60" />
+        </span>
+      ))}
+    </div>
+  );
+}
+
+function BirthdaySection({ children }: { children: React.ReactNode }) {
+  return (
+    <section className="relative overflow-hidden rounded-[28px] border border-[#F3D7CB] bg-[#FFF9F4] p-4 shadow-sm sm:p-5" aria-label="Birthday celebrations">
+      <BirthdayStyles />
+      <BirthdayDecor />
+
+      {/* HEADER */}
+      <div className="relative z-10 mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-white/80 px-4 py-3 backdrop-blur-sm">
+        <div className="flex items-center gap-3.5">
+          <div className="relative flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[#FAEEE5]">
+            <span className="bd-flame absolute -top-1 left-1/2 -translate-x-1/2 text-xs" aria-hidden="true">🔥</span>
+            <span className="bd-cake text-2xl" aria-hidden="true">🎂</span>
+          </div>
+          <div>
+            <h3 className="text-base font-black text-stone-900 sm:text-lg">Birthday Celebrations</h3>
+            <p className="text-sm text-stone-500">Celebrate your teammates and send your wishes.</p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 text-2xl sm:gap-3 sm:text-3xl" aria-hidden="true">
+          <span className="bd-twinkle text-lg">✨</span>
+          <span className="bd-gift">🎁</span>
+          <span className="bd-party">🎉</span>
+          <span className="bd-cake" style={{ animationDelay: '0.6s' }}>🎈</span>
+          <span className="bd-twinkle text-lg" style={{ animationDelay: '0.8s' }}>✨</span>
+        </div>
+      </div>
+
+      <div className="relative z-10">{children}</div>
     </section>
   );
 }
@@ -461,12 +600,35 @@ function GameZone({ game, onGameChange }: { game: string | null; onGameChange: (
 export default function MindfulDailyDashboard() {
   const [activeGame, setActiveGame] = useState<string | null>(null);
   const [selectedMood, setSelectedMood] = useState<number | null>(null);
+  const isHydrated = useSyncExternalStore(
+    subscribeToHydration,
+    getClientHydrationSnapshot,
+    getServerHydrationSnapshot
+  );
   const [currentTime, setCurrentTime] = useState('02:26 AM');
   const [todayLabel, setTodayLabel] = useState('');
   const [greeting, setGreeting] = useState('Good morning');
   const dispatch = useAppDispatch();
   const token = useAppSelector((state) => state.auth.token);
-  const { data: dashboard, loading, error } = useAppSelector((state) => state.dashboard);
+  const {
+    data: dashboard,
+    loading,
+    error,
+    birthdays,
+    birthdaysLoading,
+    birthdaysError,
+  } = useAppSelector((state) => state.dashboard);
+  const notificationsLoading = useAppSelector((state) => state.notifications.loading);
+  const notificationsError = useAppSelector((state) => state.notifications.error);
+  const notificationsPagination = useAppSelector((state) => state.notifications.pagination);
+  const announcement = useAppSelector((state) =>
+    state.notifications.notifications
+      .filter((notification) => isActiveAnnouncementNotification(notification))
+      .sort(
+        (left, right) =>
+          new Date(right.created_at).getTime() - new Date(left.created_at).getTime()
+      )[0]
+  );
 
   useEffect(() => {
     const updateTime = () => {
@@ -484,6 +646,7 @@ export default function MindfulDailyDashboard() {
   useEffect(() => {
     if (token) {
       void dispatch(fetchMyDashboard());
+      void dispatch(fetchMyBirthdays());
     }
   }, [dispatch, token]);
 
@@ -541,15 +704,28 @@ export default function MindfulDailyDashboard() {
           <div className="rounded-full bg-white/15 px-3.5 py-1 text-sm font-bold tracking-wide text-white backdrop-blur-xs">Mindfulness Track</div>
         </section>
 
-        {/* ANNOUNCEMENT */}
-        <section className="flex items-start gap-3.5 rounded-2xl border border-[#F3D7CB] bg-[#FAEEE5] p-4 text-stone-800 shadow-xs">
-          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#F5D8CB] text-xs font-black text-[#C85D44]">!</div>
-          <div className="flex flex-col">
-            <span className="text-xs font-black tracking-wider text-[#C85D44] uppercase">IMPORTANT ANNOUNCEMENT</span>
-            <h3 className="text-sm font-bold text-stone-900 sm:text-base">Company-wide Focus Friday &amp; Wellness Recharge</h3>
-            <p className="mt-1 text-sm text-[#6B5A51] sm:text-base">No internal meetings scheduled after 1:00 PM today. Take time for deep work, mental wellness, and self-paced reflections.</p>
-          </div>
-        </section>
+        {/* Latest announcement notification from the API */}
+        {isHydrated && announcement && (
+          <section className="flex items-start gap-3.5 rounded-2xl border border-[#F3D7CB] bg-[#FAEEE5] p-4 text-stone-800 shadow-xs">
+            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#F5D8CB] text-xs font-black text-[#C85D44]">!</div>
+            <div className="flex flex-col">
+              <span className="text-xs font-black tracking-wider text-[#C85D44] uppercase">Important announcement</span>
+              <h3 className="text-sm font-bold text-stone-900 sm:text-base">{announcement.title}</h3>
+              <p className="mt-1 text-sm text-[#6B5A51] sm:text-base">{announcement.message}</p>
+            </div>
+          </section>
+        )}
+        {isHydrated && token && !announcement && (notificationsLoading || (!notificationsError && !notificationsPagination)) && (
+          <p role="status" className="text-sm text-stone-600">Loading announcements...</p>
+        )}
+        {isHydrated && token && !notificationsLoading && notificationsError && (
+          <p role="alert" className="text-sm text-red-700">Unable to load announcements: {notificationsError}</p>
+        )}
+        {isHydrated && token && !notificationsLoading && notificationsPagination && !notificationsError && !announcement && (
+          <p className="rounded-2xl border border-[#ECE3D3] bg-white px-4 py-3 text-sm text-stone-600">
+            There is no announcement.
+          </p>
+        )}
 
         {/* MOOD + SHIFT TRACKER */}
         <section className="grid grid-cols-1 gap-5 lg:grid-cols-12">
@@ -699,8 +875,18 @@ export default function MindfulDailyDashboard() {
         {/* MINDFULNESS BREAK + GAME ZONE */}
         <GameZone game={activeGame} onGameChange={setActiveGame} />
 
+        {/* BIRTHDAYS (animated celebration wrapper) */}
+        <BirthdaySection>
+          <BirthdayCalendar
+            data={birthdays}
+            loading={birthdaysLoading}
+            error={birthdaysError}
+            onRetry={() => void dispatch(fetchMyBirthdays())}
+          />
+        </BirthdaySection>
+
         {/* ATTENDANCE CALENDAR */}
-        <section className="rounded-[28px] border border-[#ECE4D6] bg-white p-6 shadow-sm">
+        {/* <section className="rounded-[28px] border border-[#ECE4D6] bg-white p-6 shadow-sm">
           <div className="mb-5 flex flex-wrap items-end justify-between gap-3 border-b border-[#F7F3EB] pb-4">
             <div>
               <span className="text-xs font-black tracking-[0.18em] text-[#C85D44] uppercase">ATTENDANCE OVERVIEW</span>
@@ -762,7 +948,7 @@ export default function MindfulDailyDashboard() {
               {loading ? 'Loading attendance calendar...' : 'Attendance calendar is not available.'}
             </p>
           )}
-        </section>
+        </section> */}
       </main>
     </div>
   );

@@ -2,8 +2,8 @@
 
 import { useEffect, useRef, useState } from 'react';
 import {
-  BriefcaseBusiness, CalendarDays, Camera, Check, ChevronRight, CircleUserRound,
-  ContactRound, CreditCard, FileText, GraduationCap, MapPin, Pencil, Plus,
+  BadgeCheck, BriefcaseBusiness, CalendarDays, Camera, Check, ChevronRight, CircleUserRound,
+  Clock, ContactRound, CreditCard, FileText, GraduationCap, Info, Mail, MapPin, Pencil, Phone, Plus,
   Save, Trash2, UsersRound, X, type LucideIcon,
 } from 'lucide-react';
 import TopNav from '../components/topNavBar';
@@ -72,7 +72,9 @@ const sections: Section[] = [
   ] },
 ];
 
-const inputClass = 'mt-2 block h-12 w-full min-w-0 rounded-xl border border-[#E5DDCE] bg-[#FCFAF7] px-4 text-base font-medium text-stone-800 outline-none transition placeholder:text-stone-400 focus:border-[#707C65] focus:ring-2 focus:ring-[#707C65]/20';
+// Shared UI class strings
+const inputClass = 'mt-1.5 block h-11 w-full min-w-0 rounded-xl border border-[#E5DDCE] bg-white px-3.5 text-[15px] font-medium text-stone-800 shadow-sm outline-none transition placeholder:text-stone-400 hover:border-[#707C65]/50 focus:border-[#707C65] focus:ring-4 focus:ring-[#707C65]/15';
+const focusRing = 'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#5D6953]';
 
 function displayValue(value: ProfileRecord[string] | undefined, field?: Field): string {
   if (value === null || value === undefined || value === '') return '';
@@ -97,19 +99,52 @@ function getRecords(section: Section, data: EmployeeProfile, sectionData?: Secti
   return [];
 }
 
-// Distinct Color Themes for each section
-const sectionThemes: Record<string, { bg: string; border: string; text: string; iconBg: string; iconText: string; headerBg: string; headerBorder: string }> = {
-  personal:   { bg: 'bg-gradient-to-br from-[#FFFDF8] to-[#F8EBD9]', border: 'border-[#E8D4B9]', text: 'text-[#815526]', iconBg: 'bg-[#FDF8F0]', iconText: 'text-[#9B6A38]', headerBg: 'bg-[#FDF8F0]', headerBorder: 'border-[#EDD7BE]' },
-  employment: { bg: 'bg-gradient-to-br from-[#F6F8F3] to-[#EAF0E6]', border: 'border-[#D9E2D2]', text: 'text-[#46513F]', iconBg: 'bg-[#EAF0E6]', iconText: 'text-[#5D6953]', headerBg: 'bg-[#F6F8F3]', headerBorder: 'border-[#D9E2D2]' },
-  contact:    { bg: 'bg-gradient-to-br from-[#FFF8F5] to-[#FCE5DC]', border: 'border-[#F3C9BB]', text: 'text-[#B24832]', iconBg: 'bg-[#FEF1EC]', iconText: 'text-[#C85D44]', headerBg: 'bg-[#FEF1EC]', headerBorder: 'border-[#F4C8B9]' },
-  addresses:  { bg: 'bg-gradient-to-br from-[#FFFDF8] to-[#F8EBD9]', border: 'border-[#E8D4B9]', text: 'text-[#815526]', iconBg: 'bg-[#FDF8F0]', iconText: 'text-[#9B6A38]', headerBg: 'bg-[#FDF8F0]', headerBorder: 'border-[#EDD7BE]' },
-  emergency:  { bg: 'bg-gradient-to-br from-[#FFF8F5] to-[#FCE5DC]', border: 'border-[#F3C9BB]', text: 'text-[#B24832]', iconBg: 'bg-[#FEF1EC]', iconText: 'text-[#C85D44]', headerBg: 'bg-[#FEF1EC]', headerBorder: 'border-[#F4C8B9]' },
-  family:     { bg: 'bg-gradient-to-br from-[#F6F8F3] to-[#EAF0E6]', border: 'border-[#D9E2D2]', text: 'text-[#46513F]', iconBg: 'bg-[#EAF0E6]', iconText: 'text-[#5D6953]', headerBg: 'bg-[#F6F8F3]', headerBorder: 'border-[#D9E2D2]' },
-  education:  { bg: 'bg-gradient-to-br from-[#FFFDF8] to-[#F8EBD9]', border: 'border-[#E8D4B9]', text: 'text-[#815526]', iconBg: 'bg-[#FDF8F0]', iconText: 'text-[#9B6A38]', headerBg: 'bg-[#FDF8F0]', headerBorder: 'border-[#EDD7BE]' },
-  identity:   { bg: 'bg-gradient-to-br from-[#FFF8F5] to-[#FCE5DC]', border: 'border-[#F3C9BB]', text: 'text-[#B24832]', iconBg: 'bg-[#FEF1EC]', iconText: 'text-[#C85D44]', headerBg: 'bg-[#FEF1EC]', headerBorder: 'border-[#F4C8B9]' },
-  bank:       { bg: 'bg-gradient-to-br from-[#F6F8F3] to-[#EAF0E6]', border: 'border-[#D9E2D2]', text: 'text-[#46513F]', iconBg: 'bg-[#EAF0E6]', iconText: 'text-[#5D6953]', headerBg: 'bg-[#F6F8F3]', headerBorder: 'border-[#D9E2D2]' },
-  experience: { bg: 'bg-gradient-to-br from-[#FFFDF8] to-[#F8EBD9]', border: 'border-[#E8D4B9]', text: 'text-[#815526]', iconBg: 'bg-[#FDF8F0]', iconText: 'text-[#9B6A38]', headerBg: 'bg-[#FDF8F0]', headerBorder: 'border-[#EDD7BE]' },
+// Distinct color themes for each section (three palettes: sand, sage, rust)
+type Theme = { bg: string; border: string; text: string; iconBg: string; iconText: string; headerBg: string; headerBorder: string };
+
+const sandTheme: Theme = { bg: 'bg-gradient-to-br from-[#FFFDF8] to-[#F8EBD9]', border: 'border-[#E8D4B9]', text: 'text-[#815526]', iconBg: 'bg-[#FDF8F0]', iconText: 'text-[#9B6A38]', headerBg: 'bg-[#FDF8F0]', headerBorder: 'border-[#EDD7BE]' };
+const sageTheme: Theme = { bg: 'bg-gradient-to-br from-[#F6F8F3] to-[#EAF0E6]', border: 'border-[#D9E2D2]', text: 'text-[#46513F]', iconBg: 'bg-[#EAF0E6]', iconText: 'text-[#5D6953]', headerBg: 'bg-[#F6F8F3]', headerBorder: 'border-[#D9E2D2]' };
+const rustTheme: Theme = { bg: 'bg-gradient-to-br from-[#FFF8F5] to-[#FCE5DC]', border: 'border-[#F3C9BB]', text: 'text-[#B24832]', iconBg: 'bg-[#FEF1EC]', iconText: 'text-[#C85D44]', headerBg: 'bg-[#FEF1EC]', headerBorder: 'border-[#F4C8B9]' };
+
+const sectionThemes: Record<string, Theme> = {
+  personal: sandTheme,
+  employment: sageTheme,
+  contact: rustTheme,
+  addresses: sandTheme,
+  emergency: rustTheme,
+  family: sageTheme,
+  education: sandTheme,
+  identity: rustTheme,
+  bank: sageTheme,
+  experience: sandTheme,
 };
+
+// Display-only: quick facts shown in the profile summary card
+function HeroFacts({ data }: { data: EmployeeProfile }) {
+  const record: ProfileRecord = { ...data.profile, ...data.employee };
+  const facts = [
+    { label: 'Status', icon: BadgeCheck, wide: false, value: displayValue(record.status) },
+    { label: 'Joined', icon: CalendarDays, wide: false, value: displayValue(record.date_of_joining, { key: 'date_of_joining', label: 'Date of joining', type: 'date' }) },
+    { label: 'Email', icon: Mail, wide: true, value: displayValue(record.official_email) || displayValue(record.email) },
+    { label: 'Mobile', icon: Phone, wide: true, value: displayValue(record.phone) },
+  ].filter((fact) => fact.value !== '');
+
+  if (facts.length === 0) return null;
+
+  return (
+    <dl className="grid min-w-0 grid-cols-2 gap-3 xl:w-[520px] xl:shrink-0">
+      {facts.map(({ label, icon: Icon, wide, value }) => (
+        <div key={label} className={`min-w-0 rounded-2xl bg-white/10 px-3.5 py-2.5 ring-1 ring-white/10 ${wide ? 'col-span-2 sm:col-span-1' : ''}`}>
+          <dt className="flex items-center gap-1.5 text-xs font-semibold text-[#C9D3BF]">
+            <Icon size={13} aria-hidden="true" />
+            {label}
+          </dt>
+          <dd className="mt-0.5 truncate text-sm font-bold text-white sm:text-[15px]" title={value}>{value}</dd>
+        </div>
+      ))}
+    </dl>
+  );
+}
 
 export default function ProfilePage() {
   const dispatch = useAppDispatch();
@@ -199,7 +234,7 @@ export default function ProfilePage() {
 
   return (
     <div className="relative min-h-screen w-full overflow-x-hidden bg-[#FBF7F0] p-3 font-sans text-stone-800 antialiased selection:bg-[#707C65] selection:text-white sm:p-5 md:p-7 lg:p-9">
-      
+
       {/* Organic Abstract Canvas Backdrop */}
       <div aria-hidden="true" className="pointer-events-none fixed inset-0 z-0 overflow-hidden select-none">
         <svg className="h-full w-full object-cover opacity-90" viewBox="0 0 1920 1080" preserveAspectRatio="xMidYMid slice" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -213,214 +248,307 @@ export default function ProfilePage() {
       </div>
 
       {/* Main Elevated Dashboard Container Board */}
-      <main className="relative z-10 mx-auto flex w-full max-w-[1580px] flex-col gap-5 rounded-[36px] border border-[#ECE3D3]/80 bg-[#FCFAF7] p-4 shadow-[0_24px_64px_rgba(72,60,45,0.08)] backdrop-blur-sm sm:rounded-[42px] sm:p-6 lg:p-8">
+      <div className="relative z-10 mx-auto flex w-full max-w-[1580px] flex-col gap-5 rounded-[36px] border border-[#ECE3D3]/80 bg-[#FCFAF7] p-4 shadow-[0_24px_64px_rgba(72,60,45,0.08)] backdrop-blur-sm sm:rounded-[42px] sm:p-6 lg:p-8">
         <TopNav />
-        
-        {/* Header Bar */}
-        <div className="mt-2 flex flex-col justify-between gap-4 border-b border-[#ECE3D3] pb-4 md:flex-row md:items-center">
-          <div>
+
+        <main className="flex w-full flex-col gap-5">
+
+          {/* Page header */}
+          <header className="mt-2 border-b border-[#ECE3D3] pb-5">
             <span className="text-xs font-black uppercase tracking-widest text-[#5D6953]">EMPLOYEE ACCOUNT</span>
             <h1 className="mt-0.5 text-3xl font-black text-stone-900 sm:text-4xl">My Profile</h1>
             <p className="mt-1 text-sm leading-relaxed text-stone-600 sm:text-base">
               Your personal and employment information, all in one place.
             </p>
-          </div>
-          <div className="flex flex-wrap items-center gap-3">
-             {data && (
-               <span className="rounded-xl border border-[#E5DDCE] bg-[#F7F3EB] px-4 py-2 text-sm font-bold text-[#46513F]">
-                {displayName}
-              </span>
-             )}
-          </div>
-        </div>
+          </header>
 
-        {loading && <p role="status" className="mt-6 text-base font-bold text-[#5D6953] animate-pulse">Loading profile...</p>}
-        {error && <div role="alert" className="mt-6 rounded-xl border border-[#F3D7CB] bg-[#FAEEE5] p-4 text-base font-bold text-[#C85D44]">{error} <button type="button" onClick={() => void dispatch(fetchEmployeeProfile())} className="ml-2 underline">Try again</button></div>}
-        
-        {data && <>
-          {/* Header Card (Profile Picture & Name) */}
-          <div className="flex flex-wrap items-center gap-5 rounded-[28px] bg-gradient-to-br from-[#5D6953] to-[#414B3A] px-6 py-6 text-white shadow-md sm:px-8">
-            <div className="relative">
-              <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-full border-4 border-white/20 bg-[#F6F8F3] text-2xl font-black text-[#46513F]">
-                {picture ? <span role="img" aria-label="Profile picture" className="h-full w-full bg-cover bg-center" style={{ backgroundImage: `url(${picture})` }} /> : displayName === 'Your profile' ? <CircleUserRound size={32} /> : displayName.split(' ').filter(Boolean).slice(0, 2).map((part) => part[0]).join('').toUpperCase()}
+          {/* Loading state */}
+          {loading && (
+            <p role="status" className="flex w-fit items-center gap-3 rounded-2xl border border-[#D9E2D2] bg-[#F6F8F3] px-5 py-3 text-base font-bold text-[#5D6953]">
+              <span aria-hidden="true" className="h-5 w-5 animate-spin rounded-full border-2 border-[#5D6953]/30 border-t-[#5D6953] motion-reduce:animate-none" />
+              Loading profile...
+            </p>
+          )}
+          {loading && !data && (
+            <div aria-hidden="true" className="flex flex-col gap-5">
+              <div className="h-48 animate-pulse rounded-3xl bg-[#EFE9DF] motion-reduce:animate-none sm:h-40" />
+              <div className="grid items-start gap-5 lg:grid-cols-[260px_minmax(0,1fr)] xl:grid-cols-[300px_minmax(0,1fr)]">
+                <div className="h-20 animate-pulse rounded-2xl bg-[#F4EFE6] motion-reduce:animate-none lg:h-[28rem]" />
+                <div className="h-96 animate-pulse rounded-3xl bg-[#F4EFE6] motion-reduce:animate-none" />
               </div>
-              <button type="button" title="Upload profile picture" aria-label="Upload profile picture" disabled={pictureLoading} onClick={() => fileRef.current?.click()} className="absolute -bottom-1 -right-1 rounded-full border-2 border-[#414B3A] bg-white p-2 text-[#5D6953] shadow-sm transition hover:bg-[#F6F8F3] active:scale-95 disabled:opacity-50">
-                <Camera size={16} />
+            </div>
+          )}
+
+          {/* Error state */}
+          {error && (
+            <div role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border-2 border-[#F3D7CB] bg-[#FAEEE5] px-5 py-4">
+              <p className="text-base font-bold text-[#B24832]">{error}</p>
+              <button type="button" onClick={() => void dispatch(fetchEmployeeProfile())} className={`min-h-10 rounded-xl bg-[#C87961] px-5 py-2 text-sm font-bold text-white shadow-sm transition hover:bg-[#B86A54] active:scale-95 ${focusRing}`}>
+                Try again
               </button>
-              <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={uploadPicture} />
             </div>
-            <div className="min-w-0 flex-1">
-              <p className="break-words text-xl font-black sm:text-2xl">{displayName}</p>
-              <p className="mt-1 text-base font-medium text-[#DCE4D5]">{displayValue(data.employee.designation) || 'Employee'}{data.employee.emp_code ? `  ·  ${data.employee.emp_code}` : ''}</p>
-              {pictureLoading && <p className="mt-1 text-sm text-[#E8EEDF]">Updating picture...</p>}
-              {pictureError && <p role="alert" className="mt-1 text-sm text-[#FEF1EC]">{pictureError}</p>}
-            </div>
-          </div>
+          )}
 
-          {/* Notifications */}
-          {notice && <div role="status" className="mt-5 flex items-center gap-2 rounded-lg border border-[#D9E2D2] bg-[#F6F8F3] px-4 py-3 text-sm font-bold text-[#5D6953]"><Check size={17} />{notice}</div>}
-          {formError && <div role="alert" className="mt-5 rounded-lg border border-[#F4C8B9] bg-[#FEF1EC] px-4 py-3 text-sm font-bold text-[#C85D44]">{formError}</div>}
-          
-          <div className="grid items-start gap-5 lg:grid-cols-[260px_minmax(0,1fr)] xl:grid-cols-[300px_minmax(0,1fr)]">
-            
-            {/* Sidebar Navigation */}
-            <nav aria-label="Profile sections" className="min-w-0 rounded-2xl border border-[#E5DDCE] bg-white p-3 shadow-sm">
-              <p className="mb-2 hidden px-3 pt-2 text-xs font-black uppercase tracking-widest text-[#5D6953] lg:block">Profile Sections</p>
-              <div className="flex gap-2 overflow-x-auto pb-1 lg:flex-col lg:overflow-visible lg:pb-0">
-                {sections.map((section) => {
-                  const Icon = section.icon;
-                  const selected = section.id === active.id;
-                  return (
-                    <button 
-                      key={section.id} 
-                      type="button" 
-                      disabled={editing || submitting} 
-                      onClick={() => { setActiveId(section.id); setNotice(''); setFormError(''); }} 
-                      aria-current={selected ? 'page' : undefined} 
-                      className={`flex shrink-0 items-center gap-3 rounded-xl px-4 py-3 text-left text-sm font-bold transition-all duration-200 disabled:opacity-50 lg:w-full ${
-                        selected 
-                          ? 'bg-gradient-to-r from-[#5D6953] to-[#46513F] text-white shadow-md' 
-                          : 'text-stone-600 hover:bg-[#F6F8F3] hover:text-[#46513F] border border-transparent hover:border-[#E5DDCE]'
-                      }`}
-                    >
-                      <Icon size={19} className="shrink-0" />
-                      <span className="flex-1 whitespace-nowrap">{section.title}</span>
-                      {selected && <ChevronRight size={16} className="hidden lg:block" />}
-                    </button>
-                  );
-                })}
+          {data && <>
+            {/* Profile summary (picture, name, quick facts) */}
+            <section aria-label="Profile summary" className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#5D6953] to-[#414B3A] p-5 text-white shadow-md sm:p-7">
+              <div aria-hidden="true" className="pointer-events-none absolute inset-0">
+                <span className="absolute -right-20 -top-28 h-80 w-80 rounded-full bg-white/[0.06]" />
+                <span className="absolute -bottom-32 right-1/3 h-72 w-72 rounded-full bg-[#C87961]/15" />
+                <span className="absolute -bottom-16 -left-12 h-44 w-44 rounded-full bg-white/[0.04]" />
               </div>
-            </nav>
 
-            {/* Main Content Area */}
-            <div className={`min-w-0 overflow-hidden rounded-[28px] border ${theme.border} bg-white shadow-[0_12px_30px_rgba(72,60,45,0.05)]`}>
-              
-              {/* Section Header - Uses Section Theme Colors */}
-              <div className={`flex flex-wrap items-start justify-between gap-4 border-b ${theme.headerBorder} ${theme.headerBg} px-5 py-5 sm:px-8 sm:py-7`}>
-                <div className="flex items-start gap-4">
-                  <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl ${theme.iconBg} ${theme.iconText} shadow-sm border ${theme.border}`}>
-                    <active.icon size={23} />
+              <div className="relative flex flex-col gap-6 xl:flex-row xl:items-center xl:justify-between xl:gap-10">
+                <div className="flex min-w-0 items-center gap-4 sm:gap-6">
+                  <div className="relative shrink-0">
+                    <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-full border-4 border-white/25 bg-[#F6F8F3] text-2xl font-black text-[#46513F] shadow-lg sm:h-24 sm:w-24 sm:text-3xl">
+                      {picture ? <span role="img" aria-label="Profile picture" className="h-full w-full bg-cover bg-center" style={{ backgroundImage: `url(${picture})` }} /> : displayName === 'Your profile' ? <CircleUserRound size={36} /> : displayName.split(' ').filter(Boolean).slice(0, 2).map((part) => part[0]).join('').toUpperCase()}
+                    </div>
+                    <button type="button" title="Upload profile picture" aria-label="Upload profile picture" disabled={pictureLoading} onClick={() => fileRef.current?.click()} className="absolute -bottom-1 -right-1 flex h-9 w-9 items-center justify-center rounded-full border-2 border-[#414B3A] bg-white text-[#5D6953] shadow-md transition hover:scale-105 hover:bg-[#F6F8F3] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white active:scale-95 disabled:opacity-50">
+                      <Camera size={16} />
+                    </button>
+                    <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={uploadPicture} />
                   </div>
-                  <div>
-                    <h2 className={`text-xl font-black sm:text-2xl ${theme.text}`}>{active.title}</h2>
-                    <p className="mt-1 text-base text-stone-600">{active.description}</p>
+                  <div className="min-w-0">
+                    <p className="break-words text-2xl font-black leading-tight sm:text-3xl">{displayName}</p>
+                    <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-2">
+                      <span className="text-base font-medium text-[#DCE4D5]">{displayValue(data.employee.designation) || 'Employee'}</span>
+                      {data.employee.emp_code ? (
+                        <span className="rounded-full bg-white/15 px-3 py-1 text-xs font-bold tracking-wide text-[#E8EEDF] ring-1 ring-white/20">
+                          {displayValue(data.employee.emp_code)}
+                        </span>
+                      ) : null}
+                    </div>
+                    {pictureLoading && <p className="mt-2 text-sm text-[#E8EEDF]">Updating picture...</p>}
+                    {pictureError && <p role="alert" className="mt-2 text-sm text-[#FEF1EC]">{pictureError}</p>}
                   </div>
                 </div>
-                {!editing && active.request && (active.repeatable || records.length === 0) && (
-                  <button type="button" disabled={sectionLoading || submitting} onClick={() => startEditing(null)} className="inline-flex items-center gap-2 rounded-xl bg-[#C87961] px-4 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-[#B86A54] active:scale-95 disabled:opacity-50">
-                    <Plus size={16} /> Add details
-                  </button>
-                )}
+
+                <HeroFacts data={data} />
               </div>
+            </section>
 
-              {/* Loading/Error States */}
-              {active.api && sectionLoading && <p role="status" className="px-5 pt-5 text-base font-bold text-[#5D6953] animate-pulse sm:px-8">Loading section...</p>}
-              {active.api && sectionError && <p role="alert" className="px-5 pt-5 text-base font-bold text-[#C85D44] sm:px-8">{sectionError} <button type="button" onClick={() => active.api && void dispatch(fetchProfileSection(active.api))} className="underline">Try again</button></p>}
+            {/* Notifications */}
+            {notice && (
+              <div role="status" className="flex items-center gap-3 rounded-2xl border border-[#D9E2D2] bg-[#F6F8F3] px-4 py-3 text-sm font-bold text-[#46513F] sm:text-base">
+                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#5D6953] text-white"><Check size={15} /></span>
+                {notice}
+              </div>
+            )}
+            {formError && (
+              <div role="alert" className="rounded-2xl border border-[#F3D7CB] bg-[#FAEEE5] px-4 py-3 text-sm font-bold text-[#B24832] sm:text-base">{formError}</div>
+            )}
 
-              {/* Edit Form */}
-              {editing ? (
-                <form onSubmit={submit} className={theme.bg}>
-                  <div className="grid gap-x-6 gap-y-6 px-5 py-6 sm:grid-cols-2 sm:px-8 sm:py-8">
-                    {active.fields.map((field) => (
-                      <label key={field.key} className={`block text-sm font-bold text-stone-700 ${field.wide ? 'sm:col-span-2' : ''}`}>
-                        {field.label}
-                        {field.options ? (
-                          <select value={draft[field.key] || ''} onChange={(event) => setDraft((current) => ({ ...current, [field.key]: event.target.value }))} className={inputClass}>
-                            <option value="">Select {field.label.toLowerCase()}</option>
-                            {field.options.map((option) => <option key={option} value={option}>{option.replaceAll('_', ' ')}</option>)}
-                          </select>
-                        ) : (
-                          <input type={field.type || 'text'} value={draft[field.key] || ''} onChange={(event) => setDraft((current) => ({ ...current, [field.key]: event.target.value }))} className={inputClass} />
+            <div className="grid items-start gap-5 lg:grid-cols-[260px_minmax(0,1fr)] xl:grid-cols-[300px_minmax(0,1fr)]">
+
+              {/* Sidebar Navigation */}
+              <nav aria-label="Profile sections" className="min-w-0 rounded-2xl border border-[#E5DDCE] bg-white p-2.5 shadow-sm lg:p-3">
+                <div className="-m-1 flex gap-1.5 overflow-x-auto p-1 lg:flex-col lg:overflow-visible">
+                  {sections.map((section) => {
+                    const Icon = section.icon;
+                    const selected = section.id === active.id;
+                    const sectionTheme = sectionThemes[section.id] ?? sectionThemes.personal;
+                    return (
+                      <button
+                        key={section.id}
+                        type="button"
+                        disabled={editing || submitting}
+                        onClick={() => { setActiveId(section.id); setNotice(''); setFormError(''); }}
+                        aria-current={selected ? 'true' : undefined}
+                        className={`flex shrink-0 items-center gap-3 rounded-xl border px-3 py-2.5 text-left text-sm font-bold transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-50 lg:w-full ${focusRing} ${
+                          selected
+                            ? 'border-transparent bg-gradient-to-r from-[#5D6953] to-[#46513F] text-white shadow-md'
+                            : 'border-transparent text-stone-600 hover:border-[#E5DDCE] hover:bg-[#F6F8F3] hover:text-[#46513F]'
+                        }`}
+                      >
+                        <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border transition-colors ${
+                          selected
+                            ? 'border-white/20 bg-white/15 text-white'
+                            : `${sectionTheme.headerBorder} ${sectionTheme.iconBg} ${sectionTheme.iconText}`
+                        }`}>
+                          <Icon size={17} />
+                        </span>
+                        <span className="flex-1 whitespace-nowrap">{section.title}</span>
+                        {selected && <ChevronRight size={16} className="hidden lg:block" />}
+                      </button>
+                    );
+                  })}
+                </div>
+              </nav>
+
+              {/* Main Content Area */}
+              <div className={`min-w-0 overflow-hidden rounded-3xl border ${theme.border} bg-white shadow-[0_12px_30px_rgba(72,60,45,0.05)]`}>
+
+                {/* Section Header - Uses Section Theme Colors */}
+                <div className={`flex flex-wrap items-center justify-between gap-4 border-b ${theme.headerBorder} ${theme.headerBg} px-5 py-5 sm:px-7 sm:py-6`}>
+                  <div className="flex min-w-0 items-center gap-4">
+                    <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border ${theme.border} ${theme.iconBg} ${theme.iconText} shadow-sm sm:h-14 sm:w-14`}>
+                      <active.icon size={24} />
+                    </div>
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                        <h2 className={`text-xl font-black sm:text-2xl ${theme.text}`}>{active.title}</h2>
+                        {active.repeatable && records.length > 0 && (
+                          <span className={`rounded-full border ${theme.border} bg-white px-2.5 py-0.5 text-xs font-bold ${theme.text}`}>
+                            {records.length} {records.length === 1 ? 'entry' : 'entries'}
+                          </span>
                         )}
-                      </label>
-                    ))}
-                  </div>
-                  <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[#E5DDCE] bg-white/50 px-5 py-4 sm:px-8">
-                    <p className="text-sm font-medium text-stone-600">Changes are subject to approval.</p>
-                    <div className="flex gap-2">
-                      <button type="button" disabled={submitting} onClick={() => { setEditing(false); setFormError(''); }} className="inline-flex h-11 items-center gap-2 rounded-xl border border-[#E5DDCE] bg-white px-4 text-sm font-bold text-stone-700 transition hover:bg-[#F6F8F3] disabled:opacity-50">
-                        <X size={16} /> Cancel
-                      </button>
-                      <button type="submit" disabled={submitting} className="inline-flex h-11 items-center gap-2 rounded-xl bg-[#C87961] px-4 text-sm font-bold text-white shadow-sm transition hover:bg-[#B86A54] active:scale-95 disabled:opacity-50">
-                        <Save size={16} /> {submitting ? 'Submitting...' : 'Submit request'}
-                      </button>
+                      </div>
+                      <p className="mt-0.5 text-sm text-stone-600 sm:text-base">{active.description}</p>
                     </div>
                   </div>
-                </form>
-              ) : (
-                /* Data Display */
-                <div className={`px-5 py-6 sm:px-8 sm:py-8 ${theme.bg}`}>
-                  {records.length === 0 ? (
-                    <p className="text-base text-stone-600">No details available.</p>
-                  ) : (
-                    records.map((record, index) => (
-                      <div key={String(record.id ?? index)} className={index > 0 ? `mt-8 border-t ${theme.border} pt-7` : ''}>
-                        <div className="mb-5 flex items-center justify-between gap-3">
-                          {active.repeatable ? (
-                            <h3 className={`text-base font-bold ${theme.text}`}>{active.title} {index + 1}</h3>
-                          ) : <span />}
-                          {active.request && (
-                            <div className="flex gap-2">
-                              {active.allowUpdate && (
-                                <button type="button" disabled={submitting || sectionLoading} onClick={() => startEditing(record)} title="Edit details" aria-label={`Edit ${active.title} ${index + 1}`} className={`rounded-md p-2 ${theme.iconText} transition hover:bg-white/50 disabled:opacity-50`}>
-                                  <Pencil size={17} />
-                                </button>
-                              )}
-                              {active.allowDelete && (
-                                <button type="button" disabled={submitting || sectionLoading} onClick={() => void removeRecord(record)} title="Request deletion" aria-label={`Request deletion of ${active.title} ${index + 1}`} className="rounded-md p-2 text-stone-500 transition hover:bg-[#FEF1EC] hover:text-[#C85D44] disabled:opacity-50">
-                                  <Trash2 size={17} />
-                                </button>
-                              )}
+                  {!editing && active.request && (active.repeatable || records.length === 0) && (
+                    <button type="button" disabled={sectionLoading || submitting} onClick={() => startEditing(null)} className={`inline-flex h-10 items-center gap-2 rounded-xl bg-[#C87961] px-4 text-sm font-bold text-white shadow-sm transition hover:bg-[#B86A54] active:scale-95 disabled:opacity-50 ${focusRing}`}>
+                      <Plus size={16} /> Add details
+                    </button>
+                  )}
+                </div>
+
+                {/* Loading/Error States */}
+                {active.api && sectionLoading && (
+                  <p role="status" className="flex items-center gap-2 px-5 pt-5 text-sm font-bold text-[#5D6953] sm:px-7 sm:text-base">
+                    <span aria-hidden="true" className="h-4 w-4 animate-spin rounded-full border-2 border-[#5D6953]/30 border-t-[#5D6953] motion-reduce:animate-none" />
+                    Loading section...
+                  </p>
+                )}
+                {active.api && sectionError && (
+                  <p role="alert" className="px-5 pt-5 text-sm font-bold text-[#B24832] sm:px-7 sm:text-base">
+                    {sectionError} <button type="button" onClick={() => active.api && void dispatch(fetchProfileSection(active.api))} className={`underline underline-offset-2 hover:text-[#8F3622] ${focusRing}`}>Try again</button>
+                  </p>
+                )}
+
+                {/* Edit Form */}
+                {editing ? (
+                  <form onSubmit={submit} className={theme.bg}>
+                    <div className="px-5 pt-5 sm:px-7 sm:pt-6">
+                      <p className={`inline-flex items-center gap-2 rounded-full border ${theme.headerBorder} bg-white/80 px-3 py-1 text-xs font-bold ${theme.text}`}>
+                        {original ? <Pencil size={13} aria-hidden="true" /> : <Plus size={13} aria-hidden="true" />}
+                        {original ? 'Editing details' : 'Adding details'}
+                      </p>
+                    </div>
+                    <div className="grid gap-x-5 gap-y-5 px-5 pb-6 pt-4 sm:grid-cols-2 sm:px-7 sm:pb-7 xl:grid-cols-3">
+                      {active.fields.map((field) => (
+                        <label key={field.key} className={`block text-sm font-bold text-stone-700 ${field.wide ? 'sm:col-span-2' : ''}`}>
+                          {field.label}
+                          {field.options ? (
+                            <select value={draft[field.key] || ''} onChange={(event) => setDraft((current) => ({ ...current, [field.key]: event.target.value }))} className={inputClass}>
+                              <option value="">Select {field.label.toLowerCase()}</option>
+                              {field.options.map((option) => <option key={option} value={option}>{option.replaceAll('_', ' ')}</option>)}
+                            </select>
+                          ) : (
+                            <input type={field.type || 'text'} value={draft[field.key] || ''} onChange={(event) => setDraft((current) => ({ ...current, [field.key]: event.target.value }))} className={inputClass} />
+                          )}
+                        </label>
+                      ))}
+                    </div>
+                    <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[#E5DDCE] bg-white/60 px-5 py-4 sm:px-7">
+                      <p className="flex items-center gap-2 text-sm font-medium text-stone-600">
+                        <Info size={16} className="shrink-0 text-[#707C65]" aria-hidden="true" />
+                        Changes are subject to approval.
+                      </p>
+                      <div className="flex w-full gap-2 sm:w-auto">
+                        <button type="button" disabled={submitting} onClick={() => { setEditing(false); setFormError(''); }} className={`inline-flex h-11 flex-1 items-center justify-center gap-2 rounded-xl border border-[#E5DDCE] bg-white px-4 text-sm font-bold text-stone-700 transition hover:bg-[#F6F8F3] disabled:opacity-50 sm:flex-none ${focusRing}`}>
+                          <X size={16} /> Cancel
+                        </button>
+                        <button type="submit" disabled={submitting} className={`inline-flex h-11 flex-1 items-center justify-center gap-2 rounded-xl bg-[#C87961] px-5 text-sm font-bold text-white shadow-sm transition hover:bg-[#B86A54] active:scale-95 disabled:opacity-50 sm:flex-none ${focusRing}`}>
+                          <Save size={16} /> {submitting ? 'Submitting...' : 'Submit request'}
+                        </button>
+                      </div>
+                    </div>
+                  </form>
+                ) : (
+                  /* Data Display */
+                  <div className={`px-5 py-5 sm:px-7 sm:py-7 ${theme.bg}`}>
+                    {!active.request && (
+                      <p className={`mb-5 flex items-start gap-2.5 rounded-xl border ${theme.headerBorder} bg-white/70 px-4 py-3 text-sm font-medium text-stone-600`}>
+                        <Info size={16} className={`mt-0.5 shrink-0 ${theme.iconText}`} aria-hidden="true" />
+                        Contact your administrator to update these details.
+                      </p>
+                    )}
+                    {records.length === 0 ? (
+                      <div className={`flex flex-col items-center gap-3 rounded-2xl border border-dashed ${theme.border} bg-white/60 px-6 py-10 text-center`}>
+                        <span className={`flex h-12 w-12 items-center justify-center rounded-2xl ${theme.iconBg} ${theme.iconText}`}>
+                          <active.icon size={24} />
+                        </span>
+                        <p className="text-base font-bold text-stone-700">No details available.</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-5">
+                        {records.map((record, index) => (
+                          <div key={String(record.id ?? index)} className={active.repeatable ? `rounded-2xl border ${theme.border} bg-white/50 p-4 sm:p-5` : ''}>
+                            {(active.repeatable || active.request) && (
+                              <div className="mb-4 flex items-center justify-between gap-3">
+                                {active.repeatable ? (
+                                  <h3 className={`text-base font-black ${theme.text}`}>{active.title} {index + 1}</h3>
+                                ) : <span />}
+                                {active.request && (
+                                  <div className="flex gap-1.5">
+                                    {active.allowUpdate && (
+                                      <button type="button" disabled={submitting || sectionLoading} onClick={() => startEditing(record)} title="Edit details" aria-label={`Edit ${active.title} ${index + 1}`} className={`flex h-9 w-9 items-center justify-center rounded-lg border ${theme.headerBorder} bg-white ${theme.iconText} shadow-sm transition hover:bg-[#F6F8F3] active:scale-95 disabled:opacity-50 ${focusRing}`}>
+                                        <Pencil size={16} />
+                                      </button>
+                                    )}
+                                    {active.allowDelete && (
+                                      <button type="button" disabled={submitting || sectionLoading} onClick={() => void removeRecord(record)} title="Request deletion" aria-label={`Request deletion of ${active.title} ${index + 1}`} className={`flex h-9 w-9 items-center justify-center rounded-lg border border-[#E5DDCE] bg-white text-stone-500 shadow-sm transition hover:border-[#F4C8B9] hover:bg-[#FEF1EC] hover:text-[#C85D44] active:scale-95 disabled:opacity-50 ${focusRing}`}>
+                                        <Trash2 size={16} />
+                                      </button>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                              {active.fields.map((field) => (
+                                <div key={field.key} className={`min-w-0 rounded-xl border ${theme.headerBorder} bg-white/85 px-4 py-3 shadow-sm ${field.wide ? 'sm:col-span-2' : ''}`}>
+                                  <p className={`text-[13px] font-bold ${theme.text}`}>{field.label}</p>
+                                  <p className="mt-1 min-h-6 break-words text-[15px] font-semibold text-stone-900">
+                                    {displayValue(record[field.key], field) || <span className="font-normal text-stone-500">Not provided</span>}
+                                  </p>
+                                </div>
+                              ))}
                             </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Pending Requests */}
+                {pending.length > 0 && (
+                  <div className="border-t border-[#EDD7BE] bg-[#FDF8F0] px-5 py-5 sm:px-7 sm:py-6">
+                    <div className="flex items-center gap-2.5">
+                      <Clock size={18} className="text-[#9B6A38]" aria-hidden="true" />
+                      <h3 className="text-base font-black text-stone-900">Pending requests</h3>
+                      <span className="rounded-full bg-[#815526] px-2 py-0.5 text-xs font-black tabular-nums text-white">{pending.length}</span>
+                    </div>
+                    <div className="mt-4 space-y-3">
+                      {pending.map((item) => (
+                        <div key={item.id} className="rounded-2xl border border-[#EDD7BE] bg-white px-4 py-3.5 shadow-sm">
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <span className="text-sm font-black text-[#815526]">{item.request_type} request</span>
+                            <span className="rounded-full border border-[#EDD7BE] bg-[#FDF8F0] px-2.5 py-0.5 text-xs font-bold text-[#815526]">{item.status}</span>
+                          </div>
+                          {item.requested_data && (
+                            <dl className="mt-3 grid gap-3 border-t border-[#F3E6D3] pt-3 sm:grid-cols-2 xl:grid-cols-3">
+                              {Object.entries(item.requested_data).map(([key, value]) => (
+                                <div key={key} className="min-w-0 text-sm">
+                                  <dt className="text-stone-600">{active.fields.find((field) => field.key === key)?.label || key.replaceAll('_', ' ')}</dt>
+                                  <dd className="mt-0.5 break-words font-semibold text-stone-800">{displayValue(value, active.fields.find((field) => field.key === key)) || 'Not provided'}</dd>
+                                </div>
+                              ))}
+                            </dl>
                           )}
                         </div>
-                        <div className="grid gap-4 sm:grid-cols-2">
-                          {active.fields.map((field) => (
-                            <div key={field.key} className={`min-w-0 rounded-xl border ${theme.border} bg-white/80 px-4 py-4 shadow-sm ${field.wide ? 'sm:col-span-2' : ''}`}>
-                              <p className={`text-xs font-black uppercase tracking-wider ${theme.text}`}>{field.label}</p>
-                              <p className="mt-2 min-h-6 break-words text-base font-semibold text-stone-900">
-                                {displayValue(record[field.key], field) || <span className="font-normal text-stone-500">Not provided</span>}
-                              </p>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    ))
-                  )}
-                  {!active.request && <p className="mt-7 text-sm font-medium text-stone-600">Contact your administrator to update these details.</p>}
-                </div>
-              )}
-
-              {/* Pending Requests */}
-              {pending.length > 0 && (
-                <div className="border-t border-[#E5DDCE] bg-[#FAF7F0] px-5 py-6 sm:px-8">
-                  <h3 className="text-base font-bold text-stone-900">Pending requests</h3>
-                  <div className="mt-3 space-y-3">
-                    {pending.map((item) => (
-                      <div key={item.id} className="rounded-xl border border-[#EDD7BE] bg-[#FDF8F0] px-4 py-3">
-                        <div className="flex flex-wrap justify-between gap-2 text-sm font-bold text-[#9B6A38]">
-                          <span>{item.request_type} request</span>
-                          <span>{item.status}</span>
-                        </div>
-                        {item.requested_data && (
-                          <dl className="mt-3 grid gap-3 sm:grid-cols-2">
-                            {Object.entries(item.requested_data).map(([key, value]) => (
-                              <div key={key} className="text-sm">
-                                <dt className="text-stone-600">{active.fields.find((field) => field.key === key)?.label || key.replaceAll('_', ' ')}</dt>
-                                <dd className="mt-1 break-words font-semibold text-stone-800">{displayValue(value, active.fields.find((field) => field.key === key)) || 'Not provided'}</dd>
-                              </div>
-                            ))}
-                          </dl>
-                        )}
-                      </div>
-                    ))}
+                      ))}
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
+              </div>
             </div>
-          </div>
-        </>}
-      </main>
+          </>}
+        </main>
+      </div>
     </div>
   );
 }

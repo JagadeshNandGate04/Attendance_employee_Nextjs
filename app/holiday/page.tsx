@@ -30,17 +30,37 @@ function getEventLabel(event: CalendarEvent) {
 export default function HolidayPage() {
   const dispatch = useAppDispatch();
   const { data, loading, error } = useAppSelector((state) => state.calendar);
-  const today = useMemo(() => new Date(), []);
-  const [month, setMonth] = useState(today.getMonth() + 1);
-  const [year, setYear] = useState(today.getFullYear());
+  // `new Date()` must not run during render: Next.js prerenders client components,
+  // so the current date is read after mount (inside an effect) instead.
+  const [today, setToday] = useState<Date | null>(null);
+  const [month, setMonth] = useState(0);
+  const [year, setYear] = useState(0);
   const [selectedDate, setSelectedDate] = useState('');
   const [monthDirection, setMonthDirection] = useState(0);
 
   useEffect(() => {
+    const timer = window.setTimeout(() => {
+      const now = new Date();
+      setToday(now);
+      setMonth(now.getMonth() + 1);
+      setYear(now.getFullYear());
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    if (!month || !year) return;
     void dispatch(fetchMyCalendar({ month, year }));
   }, [dispatch, month, year]);
 
-  const currentMonthDate = `${year}-${String(month).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+  const ready = today !== null && month > 0 && year > 0;
+  const todayKey = today
+    ? `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
+    : '';
+
+  const currentMonthDate = today
+    ? `${year}-${String(month).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
+    : '';
   const effectiveSelectedDate =
     selectedDate ||
     (data?.calendar.days.some((day) => day.date === currentMonthDate)
@@ -52,10 +72,11 @@ export default function HolidayPage() {
   );
 
   const calendarCells = useMemo(() => {
-    const firstDay = new Date(year, month - 1, 1).getDay();
-    const daysInMonth = new Date(year, month, 0).getDate();
     const dayMap = new Map(data?.calendar.days.map((day) => [day.date, day]) || []);
     const cells: Array<{ date: string; day: number; outside: boolean }> = [];
+    if (!month || !year) return { cells, dayMap };
+    const firstDay = new Date(year, month - 1, 1).getDay();
+    const daysInMonth = new Date(year, month, 0).getDate();
 
     for (let index = 0; index < firstDay; index += 1) {
       const date = new Date(year, month - 1, 1 - (firstDay - index));
@@ -97,6 +118,9 @@ export default function HolidayPage() {
     (event) => event.type === 'COMMON_HOLIDAY' || event.type === 'EMPLOYEE_HOLIDAY'
   );
 
+  const navBtn =
+    'flex h-12 w-12 items-center justify-center rounded-xl border border-[#E5DDCE] bg-white text-2xl font-black text-[#5D6953] shadow-xs transition active:scale-90 hover:border-[#707C65] hover:bg-[#F6F8F3]';
+
   return (
     <div className="relative min-h-screen w-full overflow-x-hidden bg-[#FBF7F0] font-sans text-stone-800 antialiased selection:bg-[#707C65] selection:text-white p-3 sm:p-5 md:p-7 lg:p-9">
       <div aria-hidden="true" className="pointer-events-none fixed inset-0 z-0 overflow-hidden select-none">
@@ -120,32 +144,32 @@ export default function HolidayPage() {
           initial={{ opacity: 0, x: -12 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ delay: 0.12, duration: 0.45 }}
-          className="flex flex-col justify-between gap-4 border-b border-[#ECE3D3] pb-5 sm:flex-row sm:items-center"
+          className="mt-2 flex flex-col justify-between gap-4 border-b border-[#ECE3D3] pb-5 sm:flex-row sm:items-center"
         >
           <div>
-            <span className="text-xs font-black uppercase tracking-widest text-[#707C65]">EMPLOYEE CALENDAR</span>
-            <h1 className="mt-1 text-3xl font-black text-stone-900 sm:text-4xl">Holiday Calendar</h1>
-            <p className="mt-1 text-sm text-stone-600">View holidays, weekly offs, attendance, and pending leave.</p>
+            <span className="text-xs font-black uppercase tracking-widest text-[#5D6953]">EMPLOYEE CALENDAR</span>
+            <h1 className="mt-0.5 text-3xl font-black text-stone-900 sm:text-4xl">Holiday Calendar</h1>
+            <p className="mt-1 text-sm leading-relaxed text-stone-600 sm:text-base">View holidays, weekly offs, attendance, and pending leave.</p>
           </div>
-          <div className="flex items-center gap-2">
-            <button type="button" onClick={() => changeMonth(-1)} aria-label="Previous month" className="flex h-11 w-11 items-center justify-center rounded-xl border border-[#E5DDCE] bg-white text-lg font-black text-[#5D6953] shadow-xs transition active:scale-90 hover:-translate-x-0.5 hover:border-[#707C65] hover:bg-[#F6F8F3]">‹</button>
-            <button type="button" onClick={() => { setMonthDirection(0); setMonth(today.getMonth() + 1); setYear(today.getFullYear()); setSelectedDate(''); }} className="rounded-xl border border-[#E5DDCE] bg-white px-4 py-2.5 text-sm font-bold text-stone-700 transition hover:border-[#707C65] hover:bg-[#F6F8F3] active:scale-95">Today</button>
-            <button type="button" onClick={() => changeMonth(1)} aria-label="Next month" className="flex h-11 w-11 items-center justify-center rounded-xl border border-[#E5DDCE] bg-white text-lg font-black text-[#5D6953] shadow-xs transition active:scale-90 hover:translate-x-0.5 hover:border-[#707C65] hover:bg-[#F6F8F3]">›</button>
+          <div className="flex items-center gap-2.5">
+            <button type="button" onClick={() => changeMonth(-1)} aria-label="Previous month" className={`${navBtn} hover:-translate-x-0.5`}>‹</button>
+            <button type="button" onClick={() => { const now = new Date(); setToday(now); setMonthDirection(0); setMonth(now.getMonth() + 1); setYear(now.getFullYear()); setSelectedDate(''); }} className="rounded-xl border border-[#E5DDCE] bg-white px-5 py-3 text-sm font-bold text-stone-700 transition hover:border-[#707C65] hover:bg-[#F6F8F3] hover:text-[#5D6953] active:scale-95">Today</button>
+            <button type="button" onClick={() => changeMonth(1)} aria-label="Next month" className={`${navBtn} hover:translate-x-0.5`}>›</button>
           </div>
         </motion.header>
 
         {error && (
-          <div role="alert" className="rounded-2xl border border-[#F3D7CB] bg-[#FAEEE5] px-5 py-4 text-sm font-bold text-[#C85D44]">{error}</div>
+          <div role="alert" className="rounded-2xl border border-[#F3D7CB] bg-[#FAEEE5] px-5 py-4 text-sm font-bold text-[#C85D44] sm:text-base">{error}</div>
         )}
 
-        <div className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1fr)_320px]">
+        <div className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1fr)_380px]">
           <motion.section
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2, duration: 0.5 }}
             className="overflow-hidden rounded-3xl border border-[#E5DDCE] bg-white shadow-md"
           >
-            <div className="flex items-center justify-between border-b border-[#E5DDCE] bg-[#F7F3EB] px-5 py-5">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#E5DDCE] bg-gradient-to-r from-[#F7F3EB] to-[#F2EEE5] px-5 py-5 sm:px-6">
               <AnimatePresence mode="wait" initial={false}>
                 <motion.div
                   key={`${year}-${month}`}
@@ -154,17 +178,23 @@ export default function HolidayPage() {
                   exit={{ opacity: 0, x: monthDirection >= 0 ? -24 : 24 }}
                   transition={{ duration: 0.28, ease: 'easeOut' }}
                 >
-                <span className="text-xs font-black uppercase tracking-widest text-[#707C65]">{year}</span>
-                <h2 className="text-2xl font-black text-stone-900">{MONTH_NAMES[month - 1]}</h2>
+                  <span className="text-sm font-black uppercase tracking-widest text-[#5D6953]">{year || ''}</span>
+                  <h2 className="text-3xl font-black text-stone-900 sm:text-4xl">{ready ? MONTH_NAMES[month - 1] : 'Loading…'}</h2>
                 </motion.div>
               </AnimatePresence>
-              {loading && <span className="text-sm font-bold text-[#5D6953] animate-pulse">Loading…</span>}
+
+              <div className="flex flex-wrap items-center gap-2.5 text-sm font-bold">
+                <span className="inline-flex items-center gap-2 rounded-full border border-[#F2C5B7] bg-[#FEF1EC] px-3.5 py-1.5 text-[#B84D38]"><span className="h-2.5 w-2.5 rounded-full bg-[#C85D44]" aria-hidden="true" />Common</span>
+                <span className="inline-flex items-center gap-2 rounded-full border border-[#DDD1BB] bg-[#F3E9D8] px-3.5 py-1.5 text-[#76512F]"><span className="h-2.5 w-2.5 rounded-full bg-[#9B6A38]" aria-hidden="true" />Employee</span>
+                <span className="inline-flex items-center gap-2 rounded-full border border-[#CDD7C5] bg-[#EDF1E8] px-3.5 py-1.5 text-[#46513F]"><span className="h-2.5 w-2.5 rounded-full bg-[#5D6953]" aria-hidden="true" />Pending leave</span>
+                {loading && <span className="animate-pulse text-[#5D6953]">Loading…</span>}
+              </div>
             </div>
 
             <div className="p-3 sm:p-5">
-              <div className="grid grid-cols-7 border-b border-[#ECE3D3] pb-3">
+              <div className="grid grid-cols-7 rounded-xl bg-gradient-to-r from-[#4E5A45] to-[#68775C] py-3.5 shadow-sm">
                 {WEEK_DAYS.map((day) => (
-                  <div key={day} className="text-center text-xs font-black uppercase tracking-wider text-[#707C65]">{day}</div>
+                  <div key={day} className="text-center text-xs font-black uppercase tracking-wider text-white sm:text-sm">{day}</div>
                 ))}
               </div>
               <motion.div
@@ -172,7 +202,7 @@ export default function HolidayPage() {
                 initial={{ opacity: 0, scale: 0.985 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
-                className="grid grid-cols-7"
+                className="mt-2 grid grid-cols-7 overflow-hidden rounded-xl border-l border-t border-[#ECE3D3]"
               >
                 {calendarCells.cells.map((cell) => {
                   const dayData = calendarCells.dayMap.get(cell.date);
@@ -180,7 +210,7 @@ export default function HolidayPage() {
                   const employeeHoliday = dayData?.events.find((event) => event.type === 'EMPLOYEE_HOLIDAY');
                   const pendingLeave = dayData?.events.find((event) => event.type === 'PENDING_LEAVE');
                   const isSelected = effectiveSelectedDate === cell.date;
-                  const isToday = cell.date === `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+                  const isToday = cell.date === todayKey;
 
                   return (
                     <motion.button
@@ -192,15 +222,16 @@ export default function HolidayPage() {
                       whileHover={!cell.outside ? { y: -3, scale: 1.015 } : undefined}
                       whileTap={!cell.outside ? { scale: 0.97 } : undefined}
                       onClick={() => setSelectedDate(cell.date)}
-                      className={`relative min-h-20 border-b border-r border-[#ECE3D3] p-2 text-left transition sm:min-h-28 sm:p-3 ${
+                      aria-label={`${cell.date}${commonHoliday ? `, ${commonHoliday.name}` : ''}${employeeHoliday ? `, ${employeeHoliday.name}` : ''}${pendingLeave ? ', Pending leave' : ''}`}
+                      className={`relative min-h-24 border-b border-r border-[#ECE3D3] p-1.5 text-left transition sm:min-h-32 sm:p-3 ${
                         cell.outside ? 'bg-[#FAF8F4] text-stone-300' : 'bg-white hover:bg-[#F6F8F3]'
-                      } ${isSelected ? 'z-10 ring-2 ring-inset ring-[#707C65]' : ''}`}
+                      } ${isSelected ? 'z-10 bg-[#F6F8F3] ring-2 ring-inset ring-[#5D6953]' : ''}`}
                     >
-                      <span className={`flex h-7 w-7 items-center justify-center rounded-full text-sm font-black ${isToday ? 'bg-[#5D6953] text-white' : 'text-stone-800'}`}>{cell.day}</span>
-                      <div className="mt-1 space-y-1">
-                        {commonHoliday && <span className="inline-flex max-w-full truncate rounded-full border border-[#F2C5B7] bg-[#FEF1EC] px-2 py-1 text-[10px] font-black text-[#B84D38] sm:text-xs">{commonHoliday.name}</span>}
-                        {employeeHoliday && <span className="inline-flex max-w-full truncate rounded-full border border-[#DDD1BB] bg-[#F3E9D8] px-2 py-1 text-[10px] font-black text-[#76512F] sm:text-xs">{employeeHoliday.name}</span>}
-                        {pendingLeave && <span className="inline-flex max-w-full truncate rounded-full border border-[#CDD7C5] bg-[#EDF1E8] px-2 py-1 text-[10px] font-black text-[#46513F] sm:text-xs">Pending leave</span>}
+                      <span className={`flex h-8 w-8 items-center justify-center rounded-full text-sm font-black sm:h-9 sm:w-9 sm:text-base ${isToday ? 'bg-[#5D6953] text-white shadow-sm' : cell.outside ? 'text-stone-300' : 'text-stone-800'}`}>{cell.day}</span>
+                      <div className="mt-1.5 space-y-1">
+                        {commonHoliday && <span className="block max-w-full truncate rounded-lg border border-[#F2C5B7] bg-[#FEF1EC] px-2 py-1 text-[11px] font-black text-[#B84D38] sm:text-sm">{commonHoliday.name}</span>}
+                        {employeeHoliday && <span className="block max-w-full truncate rounded-lg border border-[#DDD1BB] bg-[#F3E9D8] px-2 py-1 text-[11px] font-black text-[#76512F] sm:text-sm">{employeeHoliday.name}</span>}
+                        {pendingLeave && <span className="block max-w-full truncate rounded-lg border border-[#CDD7C5] bg-[#EDF1E8] px-2 py-1 text-[11px] font-black text-[#46513F] sm:text-sm">Pending leave</span>}
                       </div>
                     </motion.button>
                   );
@@ -213,13 +244,13 @@ export default function HolidayPage() {
             initial={{ opacity: 0, x: 16 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.28, duration: 0.45 }}
-            className="flex flex-col gap-4"
+            className="flex flex-col gap-5"
           >
-            <section className="overflow-hidden rounded-3xl border-2 border-[#D9E2D2] bg-white p-6 shadow-[0_16px_35px_rgba(72,60,45,0.10)]">
-              <span className="inline-flex rounded-full border border-[#D9E2D2] bg-[#EAF0E6] px-3 py-1.5 text-xs font-black uppercase tracking-[0.18em] text-[#46513F]">
+            <section className="overflow-hidden rounded-3xl border-2 border-[#D9E2D2] bg-gradient-to-br from-white to-[#F0F5EB] p-6 shadow-[0_16px_35px_rgba(72,60,45,0.10)]">
+              <span className="inline-flex rounded-full border border-[#D9E2D2] bg-[#EAF0E6] px-3.5 py-1.5 text-xs font-black uppercase tracking-[0.18em] text-[#46513F] sm:text-sm">
                 SELECTED DAY
               </span>
-              <h3 className="mt-3 text-2xl font-black leading-tight text-stone-900 sm:text-[28px]">
+              <h3 className="mt-3 text-2xl font-black leading-tight text-stone-900 sm:text-3xl">
                 {effectiveSelectedDate ? new Intl.DateTimeFormat('en-IN', { weekday: 'long', day: 'numeric', month: 'long' }).format(new Date(`${effectiveSelectedDate}T12:00:00`)) : 'Select a date'}
               </h3>
               <AnimatePresence mode="wait">
@@ -230,20 +261,20 @@ export default function HolidayPage() {
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -8 }}
                   transition={{ duration: 0.22 }}
-                  className="mt-4 space-y-2"
+                  className="mt-4 space-y-3"
                 >
                   {selectedDay.events.length === 0 && (
-                    <p className="rounded-xl bg-[#F7F3EB] px-3 py-2.5 text-sm font-medium text-stone-600">No calendar event</p>
+                    <p className="rounded-xl bg-[#F7F3EB] px-4 py-3.5 text-base font-medium text-stone-600">No calendar event</p>
                   )}
                   {selectedDay.events.map((event, index) => (
                     <div
                       key={`${event.type}-${index}`}
                       className="rounded-2xl border-2 border-[#F0C9BC] bg-[#FFF9F6] px-4 py-4 shadow-xs"
                     >
-                        <p className="text-lg font-black text-stone-900">{event.name || getEventLabel(event)}</p>
-                        <p className="mt-1.5 inline-flex rounded-full bg-[#F8DDD3] px-2.5 py-1 text-xs font-black text-[#A84A35]">{getEventLabel(event)}</p>
-                        {event.type === 'PENDING_LEAVE' && <p className="mt-2 text-sm font-semibold text-stone-600">{formatEventDate(event.from_date || selectedDate)} – {formatEventDate(event.to_date || selectedDate)} · {event.days} day(s)</p>}
-                      </div>
+                      <p className="text-xl font-black text-stone-900">{event.name || getEventLabel(event)}</p>
+                      <p className="mt-2 inline-flex rounded-full bg-[#F8DDD3] px-3 py-1 text-sm font-black text-[#A84A35]">{getEventLabel(event)}</p>
+                      {event.type === 'PENDING_LEAVE' && <p className="mt-2.5 text-base font-semibold text-stone-600">{formatEventDate(event.from_date || selectedDate)} – {formatEventDate(event.to_date || selectedDate)} · {event.days} day(s)</p>}
+                    </div>
                   ))}
                 </motion.div>
               ) : (
@@ -251,7 +282,7 @@ export default function HolidayPage() {
                   key="empty-day"
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
-                  className="mt-4 text-sm text-stone-500"
+                  className="mt-4 text-base text-stone-500"
                 >
                   Calendar details will appear here.
                 </motion.p>
@@ -260,12 +291,12 @@ export default function HolidayPage() {
             </section>
 
             <section className="rounded-3xl border-2 border-[#D9E2D2] bg-[#F7F3EB] p-6 shadow-[0_16px_35px_rgba(72,60,45,0.10)]">
-              <div className="flex items-center justify-between">
-                <h3 className="text-2xl font-black text-stone-900">This month</h3>
-                <span className="rounded-full border border-[#CBD6C3] bg-[#5D6953] px-3.5 py-1.5 text-sm font-black text-white shadow-sm">{holidayEvents.length} holidays</span>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <h3 className="text-2xl font-black text-stone-900 sm:text-3xl">This month</h3>
+                <span className="rounded-full border border-[#CBD6C3] bg-[#5D6953] px-4 py-1.5 text-sm font-black text-white shadow-sm">{holidayEvents.length} holidays</span>
               </div>
-              <div className="mt-3 space-y-2">
-                {holidayEvents.length === 0 && <p className="text-sm text-stone-500">No holidays listed.</p>}
+              <div className="mt-4 space-y-3">
+                {holidayEvents.length === 0 && <p className="text-base text-stone-500">No holidays listed.</p>}
                 {holidayEvents.map((event, index) => (
                   <motion.button
                     key={`${event.type}-${event.date}-${event.name}`}
@@ -276,13 +307,13 @@ export default function HolidayPage() {
                     whileTap={{ scale: 0.98 }}
                     type="button"
                     onClick={() => event.date && setSelectedDate(event.date)}
-                    className="flex w-full items-center justify-between rounded-2xl border-2 border-[#ECE3D3] bg-white px-4 py-4 text-left shadow-xs transition hover:border-[#C87961]"
+                    className="flex w-full items-center justify-between gap-3 rounded-2xl border-2 border-[#ECE3D3] bg-white px-4 py-4 text-left shadow-xs transition hover:border-[#C87961]"
                   >
-                    <span>
-                      <span className="block text-base font-black text-stone-900">{event.name}</span>
+                    <span className="min-w-0">
+                      <span className="block text-lg font-black text-stone-900">{event.name}</span>
                       <span className="mt-1 block text-sm font-semibold text-stone-500">{getEventLabel(event)}</span>
                     </span>
-                    {event.date && <span className="ml-3 shrink-0 rounded-xl bg-[#FEF1EC] px-3 py-2 text-base font-black text-[#B84D38]">{formatEventDate(event.date)}</span>}
+                    {event.date && <span className="shrink-0 rounded-xl bg-[#FEF1EC] px-3.5 py-2 text-base font-black text-[#B84D38]">{formatEventDate(event.date)}</span>}
                   </motion.button>
                 ))}
               </div>

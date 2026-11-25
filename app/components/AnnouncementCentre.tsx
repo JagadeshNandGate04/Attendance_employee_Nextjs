@@ -5,6 +5,7 @@ import { useAppDispatch, useAppSelector } from "../store/hooks";
 import {
   fetchMyNotifications,
   fetchMyUnreadNotificationCount,
+  isActiveAnnouncementNotification,
   isAnnouncementNotification,
   markNotificationAsRead,
 } from "../store/notifications/notificationSlice";
@@ -19,7 +20,7 @@ export default function AnnouncementCenter() {
       .filter(
         (notification) =>
           !notification.is_read &&
-          (isAnnouncementNotification(notification) ||
+          (isActiveAnnouncementNotification(notification) ||
             notification.type.trim().toUpperCase() === "WORKDAY_SWAP")
       )
       .sort(

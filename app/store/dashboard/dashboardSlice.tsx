@@ -54,6 +54,19 @@ export interface EmployeeDashboard {
   };
 }
 
+export interface EmployeeBirthday {
+  id: string;
+  emp_code: string;
+  name: string;
+  month: number;
+  day: number;
+}
+
+export interface BirthdayCalendarData {
+  month: number | null;
+  birthdays: EmployeeBirthday[];
+}
+
 interface ApiResponse<T> {
   success: boolean;
   message?: string;
@@ -65,6 +78,10 @@ interface DashboardState {
   loading: boolean;
   error: string | null;
   requestId: string | null;
+  birthdays: BirthdayCalendarData | null;
+  birthdaysLoading: boolean;
+  birthdaysError: string | null;
+  birthdaysRequestId: string | null;
 }
 
 const initialState: DashboardState = {
@@ -72,6 +89,10 @@ const initialState: DashboardState = {
   loading: false,
   error: null,
   requestId: null,
+  birthdays: null,
+  birthdaysLoading: false,
+  birthdaysError: null,
+  birthdaysRequestId: null,
 };
 
 const API_BASE_URL = (process.env.NEXT_PUBLIC_API_URL || "").replace(/\/+$/, "");
@@ -123,6 +144,34 @@ export const fetchMyDashboard = createAsyncThunk<
   }
 });
 
+export const fetchMyBirthdays = createAsyncThunk<
+  BirthdayCalendarData,
+  void,
+  { rejectValue: string }
+>("dashboard/fetchMyBirthdays", async (_, { rejectWithValue }) => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/v1/notifications/me/birthdays`, {
+      method: "GET",
+      headers: getAuthHeaders(),
+    });
+
+    let result: ApiResponse<BirthdayCalendarData>;
+    try {
+      result = await response.json();
+    } catch {
+      throw new Error(`Loading birthdays failed (${response.status}): invalid response.`);
+    }
+
+    if (!response.ok || !result.success || result.data === undefined) {
+      throw new Error(result.message || `Loading birthdays failed (${response.status}).`);
+    }
+
+    return result.data;
+  } catch (error: unknown) {
+    return rejectWithValue(getErrorMessage(error));
+  }
+});
+
 const dashboardSlice = createSlice({
   name: "dashboard",
   initialState,
@@ -145,6 +194,23 @@ const dashboardSlice = createSlice({
         state.loading = false;
         state.error = action.payload || action.error.message || "Unable to load your dashboard.";
         state.requestId = null;
+      })
+      .addCase(fetchMyBirthdays.pending, (state, action) => {
+        state.birthdaysLoading = true;
+        state.birthdaysError = null;
+        state.birthdaysRequestId = action.meta.requestId;
+      })
+      .addCase(fetchMyBirthdays.fulfilled, (state, action) => {
+        if (state.birthdaysRequestId !== action.meta.requestId) return;
+        state.birthdays = action.payload;
+        state.birthdaysLoading = false;
+        state.birthdaysRequestId = null;
+      })
+      .addCase(fetchMyBirthdays.rejected, (state, action) => {
+        if (state.birthdaysRequestId !== action.meta.requestId) return;
+        state.birthdaysLoading = false;
+        state.birthdaysError = action.payload || action.error.message || "Unable to load birthdays.";
+        state.birthdaysRequestId = null;
       });
   },
 });

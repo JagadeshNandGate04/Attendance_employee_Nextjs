@@ -7,8 +7,91 @@ import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import { applyForLeave } from '../../store/request/requestSlice';
 import { useRequestQuery } from '../useRequestQuery'
 
+/* ------------------------------------------------------------------ */
+/*  PRESENTATION HELPERS (styling only — no business logic)           */
+/*  Same Earthy Warm look as the Requests page                        */
+/* ------------------------------------------------------------------ */
+
 const fieldClassName =
-  'mt-1.5 block w-full rounded-2xl border border-[#ECE3D3] bg-white px-4 py-2.5 text-xs font-semibold text-stone-900 outline-none transition placeholder:text-stone-400 focus:border-[#5D6953] focus:ring-2 focus:ring-[#5D6953]/20';
+  'mt-2 block w-full rounded-2xl border border-[#E5DDCE] bg-white px-4 py-3 text-sm font-semibold text-stone-900 shadow-xs outline-none transition placeholder:font-medium placeholder:text-stone-400 hover:border-[#707C65]/60 focus:border-[#5D6953] focus:ring-2 focus:ring-[#5D6953]/20';
+
+const labelClassName = 'block text-sm font-bold text-stone-800';
+
+const focusRing =
+  'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#5D6953]';
+
+const SESSION_OPTIONS = [
+  { value: 'FULL_DAY', label: 'Full day', hint: 'Whole working day' },
+  { value: 'FIRST_HALF', label: 'First half', hint: 'Morning session' },
+  { value: 'SECOND_HALF', label: 'Second half', hint: 'Afternoon session' },
+] as const;
+
+const ATTENDANCE_LABELS: Record<string, string> = {
+  CASUAL_LEAVE: 'Casual leave',
+  SICK_LEAVE: 'Sick leave',
+  EARNED_LEAVE: 'Earned leave',
+  OTHER: 'Other',
+};
+
+type IconProps = { className?: string };
+
+function CalendarIcon({ className = 'h-4 w-4' }: IconProps) {
+  return (
+    <svg className={className} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" aria-hidden="true">
+      <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+      <line x1="16" y1="2" x2="16" y2="6" />
+      <line x1="8" y1="2" x2="8" y2="6" />
+      <line x1="3" y1="10" x2="21" y2="10" />
+    </svg>
+  );
+}
+
+function PaperclipIcon({ className = 'h-4 w-4' }: IconProps) {
+  return (
+    <svg className={className} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" aria-hidden="true">
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"
+      />
+    </svg>
+  );
+}
+
+function CheckCircleIcon({ className = 'h-4 w-4' }: IconProps) {
+  return (
+    <svg className={className} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" aria-hidden="true">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+    </svg>
+  );
+}
+
+function AlertCircleIcon({ className = 'h-4 w-4' }: IconProps) {
+  return (
+    <svg className={className} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" aria-hidden="true">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+    </svg>
+  );
+}
+
+// Display-only date label ("12 Nov 2026"). Guarded so a partial value never throws while rendering.
+const displayDate = (value: string) => {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return '—';
+  return new Date(`${value}T00:00:00`).toLocaleDateString('en-IN', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+  });
+};
+
+// Display-only calendar-day span for the summary panel (not sent to the API).
+const displaySpan = (from: string, to: string) => {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(from) || !/^\d{4}-\d{2}-\d{2}$/.test(to)) return null;
+  const diff = Math.round(
+    (new Date(`${to}T00:00:00`).getTime() - new Date(`${from}T00:00:00`).getTime()) / 86400000
+  );
+  return diff >= 0 ? diff + 1 : null;
+};
 
 export default function ApplyLeavePage() {
   const dispatch = useAppDispatch();
@@ -92,6 +175,11 @@ export default function ApplyLeavePage() {
     }
   };
 
+  // Display-only values for the summary panel
+  const span = displaySpan(fromDate, toDate);
+  const sessionLabel = SESSION_OPTIONS.find((option) => option.value === sessionType)?.label ?? '';
+  const attendanceLabel = ATTENDANCE_LABELS[attendanceType] ?? 'Not selected';
+
   return (
     <div className="relative min-h-screen w-full overflow-x-hidden bg-[#FBF7F0] font-sans text-stone-800 antialiased selection:bg-[#707C65] selection:text-white p-3 sm:p-5 md:p-7 lg:p-9">
       {/* 1. Organic Abstract Backdrop Shapes */}
@@ -140,188 +228,306 @@ export default function ApplyLeavePage() {
       </div>
 
       {/* 2. Main Elevated Container Board */}
-      <main className="relative z-10 mx-auto flex w-full max-w-[1580px] flex-col gap-5 rounded-[36px] sm:rounded-[42px] border border-[#ECE3D3]/90 bg-[#FCFAF7] p-4 shadow-[0_24px_70px_rgba(72,60,45,0.08)] backdrop-blur-sm sm:p-6 lg:p-8">
+      <main className="relative z-10 mx-auto flex w-full max-w-[1580px] flex-col gap-5 rounded-[36px] sm:rounded-[42px] border border-[#ECE3D3]/80 bg-[#FCFAF7] p-4 shadow-[0_24px_64px_rgba(72,60,45,0.08)] backdrop-blur-sm sm:p-6 lg:p-8">
         <TopNav active="request" />
 
-        {/* Back Link & Navigation Breadcrumb */}
-        <div className="flex items-center justify-between">
+        {/* Header bar: back link + step note */}
+        <div className="mt-2 flex flex-wrap items-center justify-between gap-3 border-b border-[#ECE3D3] pb-4">
           <Link
             href="/requests"
-            className="inline-flex items-center gap-2 rounded-xl border border-[#ECE3D3] bg-white px-4 py-2 text-xs font-bold text-stone-700 shadow-2xs transition hover:bg-[#F6F8F3] hover:text-[#5D6953] active:scale-95"
+            className={`inline-flex items-center gap-2 rounded-2xl border border-[#D9E2D2] bg-[#F6F8F3] px-5 py-3 text-sm font-bold text-[#46513F] shadow-xs transition hover:border-[#5D6953] hover:bg-[#EAF0E6] active:scale-95 ${focusRing}`}
           >
             <span aria-hidden="true">←</span>
             Back to requests
           </Link>
-          <span className="hidden text-xs font-semibold text-stone-400 sm:inline-block">
-            Step 1 of 1 · Leave Application
+          <span className="hidden rounded-xl border border-[#E5DDCE] bg-[#F7F3EB] px-4 py-2 text-sm font-bold text-[#46513F] sm:inline-block">
+            Step 1 of 1 · Leave application
           </span>
         </div>
 
-        {/* Section Container Card */}
-        <section className="rounded-3xl border border-[#ECE3D3] bg-[#FCFAF7] p-5 shadow-xs sm:p-8">
-          {submitted ? (
-            <div className="py-12 text-center">
-              <span className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl border border-[#D9E2D2] bg-[#F6F8F3] text-2xl font-black text-[#5D6953] shadow-xs">
-                ✓
+        {submitted ? (
+          /* ============ SUCCESS STATE ============ */
+          <section
+            role="status"
+            className="overflow-hidden rounded-3xl border border-[#E5DDCE] bg-white shadow-md"
+          >
+            <span aria-hidden="true" className="block h-1.5 w-full bg-[#5D6953]" />
+            <div className="px-6 py-14 text-center sm:py-20">
+              <span className="mx-auto flex h-20 w-20 items-center justify-center rounded-3xl bg-[#5D6953] text-white shadow-md ring-1 ring-black/5">
+                <CheckCircleIcon className="h-10 w-10" />
               </span>
-              <span className="mt-5 inline-block text-[10px] font-black uppercase tracking-widest text-[#707C65]">
+              <span className="mt-6 inline-block text-xs font-black uppercase tracking-widest text-[#5D6953]">
                 APPLICATION PROCESSED
               </span>
-              <h1 className="mt-1 text-2xl font-black text-stone-900 sm:text-3xl">
+              <h1 className="mt-1 text-3xl font-black text-stone-900 sm:text-4xl">
                 Request submitted
               </h1>
-              <p className="mx-auto mt-2 max-w-md text-xs font-medium leading-relaxed text-stone-500 sm:text-sm">
+              <p className="mx-auto mt-3 max-w-md text-sm leading-relaxed text-stone-600 sm:text-base">
                 Your leave request has been submitted successfully to your manager for approval. You can track its live status in your request history.
               </p>
               <Link
                 href="/requests"
-                className="mt-6 inline-flex rounded-xl bg-[#5D6953] px-6 py-2.5 text-xs font-bold uppercase tracking-wider text-white shadow-xs transition hover:bg-[#4D5844] active:scale-95"
+                className={`mt-8 inline-flex items-center gap-2 rounded-2xl bg-[#C87961] px-6 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-[#B86A54] active:scale-95 ${focusRing}`}
               >
                 Return to requests
               </Link>
             </div>
-          ) : (
-            <>
-              {/* Card Header */}
-              <header className="border-b border-[#ECE3D3] pb-5">
-                <span className="inline-flex items-center gap-1.5 rounded-full border border-[#D9E2D2] bg-[#F6F8F3] px-3.5 py-1 text-[10px] font-black uppercase tracking-wider text-[#5D6953]">
-                  <span className="h-1.5 w-1.5 rounded-full bg-[#5D6953]" />
-                  Leave Application
-                </span>
-                <h1 className="mt-2 text-2xl font-black text-stone-900 sm:text-3xl">
-                  Apply for leave
-                </h1>
-                <p className="mt-1 text-xs text-stone-500 sm:text-sm">
-                  Complete the fields below to schedule planned time off or submit a medical absence.
-                </p>
-              </header>
-
-              {/* Leave Form */}
-              <form className="mt-6 space-y-5" onSubmit={submitLeaveRequest}>
-                <div className="grid grid-cols-1 gap-x-5 gap-y-4 sm:grid-cols-2 xl:grid-cols-4">
-                  {/* Session Type */}
-                  <label className="block text-xs font-bold text-stone-700">
-                    Session type <span className="text-[#C85D44]">*</span>
-                    <select
-                      value={sessionType}
-                      onChange={(event) => setSessionType(event.target.value)}
-                      className={fieldClassName}
-                    >
-                      <option value="FULL_DAY">Full day</option>
-                      <option value="FIRST_HALF">First half</option>
-                      <option value="SECOND_HALF">Second half</option>
-                    </select>
-                  </label>
-
-                  {/* From Date */}
-                  <label className="block text-xs font-bold text-stone-700">
-                    From date <span className="text-[#C85D44]">*</span>
-                    <input
-                      type="date"
-                      required
-                      value={fromDate}
-                      onChange={(event) =>
-                        setForm((current) => ({ ...current, from_date: event.target.value }))
-                      }
-                      className={fieldClassName}
-                    />
-                  </label>
-
-                  {/* To Date */}
-                  <label className="block text-xs font-bold text-stone-700">
-                    To date <span className="text-[#C85D44]">*</span>
-                    <input
-                      type="date"
-                      required
-                      min={fromDate || undefined}
-                      value={toDate}
-                      onChange={(event) =>
-                        setForm((current) => ({ ...current, to_date: event.target.value }))
-                      }
-                      className={fieldClassName}
-                    />
-                  </label>
-
-                  {/* Attendance Type */}
-                  <label className="block text-xs font-bold text-stone-700">
-                    Attendance type <span className="text-[#C85D44]">*</span>
-                    <select
-                      required
-                      value={attendanceType}
-                      onChange={(event) => setAttendanceType(event.target.value)}
-                      className={fieldClassName}
-                    >
-                      <option value="">Select an attendance type</option>
-                      <option value="CASUAL_LEAVE">Casual leave</option>
-                      <option value="SICK_LEAVE">Sick leave</option>
-                      <option value="EARNED_LEAVE">Earned leave</option>
-                      <option value="OTHER">Other</option>
-                    </select>
-                  </label>
-
-                  {/* Reason Textarea */}
-                  <label className="block text-xs font-bold text-stone-700 sm:col-span-2">
-                    Reason <span className="text-[#C85D44]">*</span>
-                    <textarea
-                      required
-                      rows={5}
-                      maxLength={1000}
-                      value={form.reason}
-                      onChange={(event) =>
-                        setForm((current) => ({ ...current, reason: event.target.value }))
-                      }
-                      placeholder="Enter the reason for your leave request..."
-                      className={`${fieldClassName} resize-y leading-relaxed`}
-                    />
-                  </label>
-
-                  {/* Attachment Box */}
-                  <label className="block text-xs font-bold text-stone-700 sm:col-span-2">
-                    Attachment <span className="font-normal text-stone-400">(optional)</span>
-                    <div className="mt-1.5 flex flex-col justify-center rounded-2xl border border-dashed border-[#ECE3D3] bg-white p-3.5 transition hover:border-[#5D6953]/50">
-                      <input
-                        type="file"
-                        accept="image/*,.pdf"
-                        onChange={(event) => setAttachmentName(event.target.files?.[0]?.name || '')}
-                        className="block w-full cursor-pointer text-xs text-stone-600 file:mr-3 file:cursor-pointer file:rounded-xl file:border-0 file:bg-[#5D6953] file:px-4 file:py-2 file:text-xs file:font-bold file:uppercase file:tracking-wider file:text-white hover:file:bg-[#4D5844] transition"
-                      />
-                      <span className="mt-2 text-[11px] font-semibold text-stone-500">
-                        {attachmentName ? `Selected file: ${attachmentName}` : 'No file chosen (PDF, PNG, JPG up to 10MB)'}
-                      </span>
-                    </div>
-                    <span className="mt-1.5 block text-[10px] font-medium text-stone-400">
-                      Session type, attendance type, and attachments are processed locally alongside the leave payload.
+          </section>
+        ) : (
+          /* ============ FORM STATE ============ */
+          <div className="grid grid-cols-1 items-start gap-5 xl:grid-cols-[minmax(0,1fr)_380px]">
+            {/* ---------- Form card ---------- */}
+            <section
+              aria-label="Leave application form"
+              className="overflow-hidden rounded-3xl border border-[#E5DDCE] bg-[#FCFAF7] shadow-md"
+            >
+              {/* Section header bar */}
+              <div className="flex flex-wrap items-center justify-between gap-4 border-b border-[#E5DDCE] bg-gradient-to-r from-white to-[#FAF7F0] px-5 py-5 sm:px-6">
+                <div className="flex items-center gap-3.5">
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[#5D6953] text-white shadow-sm ring-1 ring-black/5">
+                    <CalendarIcon className="h-6 w-6" />
+                  </div>
+                  <div>
+                    <span className="text-xs font-black uppercase tracking-widest text-[#5D6953]">
+                      LEAVE APPLICATION
                     </span>
-                  </label>
+                    <h1 className="text-xl font-black text-stone-900 sm:text-2xl">Apply for leave</h1>
+                  </div>
                 </div>
+                <p className="max-w-sm text-sm leading-relaxed text-stone-600">
+                  Schedule planned time off or submit a medical absence.
+                </p>
+              </div>
+
+              <form className="space-y-6 p-4 sm:p-6" onSubmit={submitLeaveRequest}>
+                {/* Group 1: Session */}
+                <fieldset className="rounded-2xl border border-[#E5ECE0] bg-[#F6F8F3] p-4 sm:p-5">
+                  <legend className="px-2 text-xs font-black uppercase tracking-wider text-[#5D6953]">
+                    Session
+                  </legend>
+                  <div
+                    role="radiogroup"
+                    aria-label="Session type"
+                    className="grid grid-cols-1 gap-2.5 sm:grid-cols-3"
+                  >
+                    {SESSION_OPTIONS.map((option) => {
+                      const active = sessionType === option.value;
+                      return (
+                        <button
+                          key={option.value}
+                          type="button"
+                          role="radio"
+                          aria-checked={active}
+                          onClick={() => setSessionType(option.value)}
+                          className={`flex flex-col items-start rounded-2xl px-4 py-3 text-left transition ${focusRing} ${
+                            active
+                              ? 'bg-[#5D6953] text-white shadow-sm'
+                              : 'border border-[#D9E2D2] bg-white text-stone-700 hover:border-[#5D6953] hover:bg-[#EAF0E6]'
+                          }`}
+                        >
+                          <span className="text-sm font-black">{option.label}</span>
+                          <span
+                            className={`mt-0.5 text-xs font-medium ${
+                              active ? 'text-[#E8EEDF]' : 'text-stone-500'
+                            }`}
+                          >
+                            {option.hint}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </fieldset>
+
+                {/* Group 2: Dates + attendance type */}
+                <fieldset className="rounded-2xl border border-[#F2E7D3] bg-[#FDF9F0] p-4 sm:p-5">
+                  <legend className="px-2 text-xs font-black uppercase tracking-wider text-[#9B6A38]">
+                    Dates &amp; type
+                  </legend>
+                  <div className="grid grid-cols-1 gap-x-5 gap-y-4 sm:grid-cols-2 xl:grid-cols-3">
+                    {/* From Date */}
+                    <label className={labelClassName}>
+                      From date <span className="text-[#C85D44]">*</span>
+                      <input
+                        type="date"
+                        required
+                        value={fromDate}
+                        onChange={(event) =>
+                          setForm((current) => ({ ...current, from_date: event.target.value }))
+                        }
+                        className={fieldClassName}
+                      />
+                    </label>
+
+                    {/* To Date */}
+                    <label className={labelClassName}>
+                      To date <span className="text-[#C85D44]">*</span>
+                      <input
+                        type="date"
+                        required
+                        min={fromDate || undefined}
+                        value={toDate}
+                        onChange={(event) =>
+                          setForm((current) => ({ ...current, to_date: event.target.value }))
+                        }
+                        className={fieldClassName}
+                      />
+                    </label>
+
+                    {/* Attendance Type */}
+                    <label className={`${labelClassName} sm:col-span-2 xl:col-span-1`}>
+                      Attendance type <span className="text-[#C85D44]">*</span>
+                      <select
+                        required
+                        value={attendanceType}
+                        onChange={(event) => setAttendanceType(event.target.value)}
+                        className={fieldClassName}
+                      >
+                        <option value="">Select an attendance type</option>
+                        <option value="CASUAL_LEAVE">Casual leave</option>
+                        <option value="SICK_LEAVE">Sick leave</option>
+                        <option value="EARNED_LEAVE">Earned leave</option>
+                        <option value="OTHER">Other</option>
+                      </select>
+                    </label>
+                  </div>
+                </fieldset>
+
+                {/* Group 3: Reason + attachment */}
+                <fieldset className="rounded-2xl border border-[#E5DDCE] bg-[#F7F3EB] p-4 sm:p-5">
+                  <legend className="px-2 text-xs font-black uppercase tracking-wider text-[#46513F]">
+                    Details
+                  </legend>
+                  <div className="grid grid-cols-1 gap-x-5 gap-y-4 lg:grid-cols-2">
+                    {/* Reason Textarea */}
+                    <label className={labelClassName}>
+                      Reason <span className="text-[#C85D44]">*</span>
+                      <textarea
+                        required
+                        rows={6}
+                        maxLength={1000}
+                        value={form.reason}
+                        onChange={(event) =>
+                          setForm((current) => ({ ...current, reason: event.target.value }))
+                        }
+                        placeholder="Enter the reason for your leave request..."
+                        className={`${fieldClassName} resize-y leading-relaxed`}
+                      />
+                      <span className="mt-1.5 block text-right text-xs font-medium tabular-nums text-stone-400">
+                        {form.reason.length}/1000
+                      </span>
+                    </label>
+
+                    {/* Attachment Box */}
+                    <div>
+                      <label className={labelClassName} htmlFor="leave-attachment">
+                        Attachment <span className="font-medium text-stone-400">(optional)</span>
+                      </label>
+                      <label
+                        htmlFor="leave-attachment"
+                        className="mt-2 flex min-h-[148px] cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-[#E5DDCE] bg-white p-4 text-center transition hover:border-[#5D6953] hover:bg-[#F6F8F3] focus-within:border-[#5D6953] focus-within:ring-2 focus-within:ring-[#5D6953]/20"
+                      >
+                        <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#F7F3EB] text-[#5D6953]">
+                          <PaperclipIcon className="h-5 w-5" />
+                        </span>
+                        <span className="text-sm font-bold text-stone-800">
+                          {attachmentName ? 'Change file' : 'Choose a file to attach'}
+                        </span>
+                        <span className="max-w-full break-all text-xs font-semibold text-stone-500">
+                          {attachmentName
+                            ? `Selected file: ${attachmentName}`
+                            : 'No file chosen (PDF, PNG, JPG up to 10MB)'}
+                        </span>
+                        <input
+                          id="leave-attachment"
+                          type="file"
+                          accept="image/*,.pdf"
+                          onChange={(event) => setAttachmentName(event.target.files?.[0]?.name || '')}
+                          className="sr-only"
+                        />
+                      </label>
+                      <p className="mt-1.5 text-xs font-medium text-stone-500">
+                        Session type, attendance type, and attachments are processed locally alongside the leave payload.
+                      </p>
+                    </div>
+                  </div>
+                </fieldset>
 
                 {/* Error Banner */}
                 {error && (
-                  <p role="alert" className="rounded-xl border border-[#F3D7CB] bg-[#FAEEE5] px-4 py-3 text-xs font-bold text-[#C85D44]">
-                    {error}
+                  <p
+                    role="alert"
+                    className="flex items-center gap-2.5 rounded-2xl border border-[#F3D7CB] bg-[#FAEEE5] px-5 py-4 text-sm font-bold text-[#C85D44]"
+                  >
+                    <AlertCircleIcon className="h-5 w-5 shrink-0" />
+                    <span>{error}</span>
                   </p>
                 )}
 
                 {/* Form Actions */}
-                <div className="flex flex-col-reverse gap-2.5 border-t border-[#ECE3D3] pt-5 sm:flex-row sm:justify-end">
+                <div className="flex flex-col-reverse gap-3 border-t border-[#ECE3D3] pt-5 sm:flex-row sm:justify-end">
                   <Link
                     href="/requests"
-                    className="rounded-xl border border-[#ECE3D3] bg-white px-5 py-2.5 text-center text-xs font-bold text-stone-600 transition hover:bg-[#F6F8F3] hover:text-[#5D6953]"
+                    className={`rounded-2xl border border-[#E5DDCE] bg-white px-6 py-3 text-center text-sm font-bold text-stone-700 transition hover:bg-[#F6F8F3] hover:text-[#5D6953] active:scale-95 ${focusRing}`}
                   >
                     Cancel
                   </Link>
                   <button
                     type="submit"
                     disabled={isSubmitting}
-                    className="rounded-xl bg-[#5D6953] px-6 py-2.5 text-xs font-bold uppercase tracking-wider text-white shadow-xs transition hover:bg-[#4D5844] active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"
+                    className="rounded-2xl bg-[#C87961] px-7 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-[#B86A54] active:scale-95 disabled:cursor-not-allowed disabled:opacity-60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#C87961]"
                   >
                     {isSubmitting ? 'Submitting…' : 'Submit request'}
                   </button>
                 </div>
               </form>
-            </>
-          )}
-        </section>
+            </section>
+
+            {/* ---------- Live summary panel ---------- */}
+            <aside
+              aria-label="Request summary"
+              className="flex flex-col gap-4 xl:sticky xl:top-6"
+            >
+              <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#5D6953] to-[#414B3A] p-5 text-white shadow-md">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="rounded-lg bg-white/15 px-3 py-1.5 text-xs font-black uppercase leading-tight tracking-wider text-[#E8EEDF]">
+                    REQUEST SUMMARY
+                  </span>
+                  <CalendarIcon className="h-5 w-5 shrink-0 text-white/80" />
+                </div>
+
+                <div className="mt-5">
+                  <p className="text-sm font-semibold text-[#D8DEC7]">Duration</p>
+                  <p className="mt-0.5 flex items-baseline gap-2">
+                    <span className="text-4xl font-black text-white">{span ?? '—'}</span>
+                    <span className="text-sm font-bold text-[#D8DEC7]">
+                      {span === 1 ? 'Calendar day' : 'Calendar days'}
+                    </span>
+                  </p>
+                </div>
+
+                <div className="mt-5 space-y-2.5 border-t border-white/15 pt-4 text-sm">
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="font-semibold text-[#D8DEC7]">From</span>
+                    <span className="font-black text-white">{displayDate(fromDate)}</span>
+                  </div>
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="font-semibold text-[#D8DEC7]">To</span>
+                    <span className="font-black text-white">{displayDate(toDate)}</span>
+                  </div>
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="font-semibold text-[#D8DEC7]">Session</span>
+                    <span className="font-black text-white">{sessionLabel}</span>
+                  </div>
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="font-semibold text-[#D8DEC7]">Type</span>
+                    <span className="font-black text-white">{attendanceLabel}</span>
+                  </div>
+                </div>
+              </div>
+            </aside>
+          </div>
+        )}
       </main>
     </div>
   );

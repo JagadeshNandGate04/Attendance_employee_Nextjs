@@ -7,6 +7,7 @@ export interface EmployeeNotification {
   type: string;
   title: string;
   message: string;
+  expires_on?: string | null;
   entity_type: string | null;
   entity_id: string | null;
   data: Record<string, unknown>;
@@ -18,6 +19,16 @@ export interface EmployeeNotification {
 export const isAnnouncementNotification = (notification: EmployeeNotification) =>
   notification.type.trim().toUpperCase() === "ANNOUNCEMENT" ||
   notification.entity_type?.trim().toLowerCase() === "announcement";
+
+const toLocalISODate = (date: Date) =>
+  `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+
+export const isActiveAnnouncementNotification = (
+  notification: EmployeeNotification,
+  now = new Date()
+) =>
+  isAnnouncementNotification(notification) &&
+  (!notification.expires_on || notification.expires_on.slice(0, 10) >= toLocalISODate(now));
 
 export const getNotificationHref = (notification: EmployeeNotification) => {
   const type = notification.type.trim().toUpperCase();

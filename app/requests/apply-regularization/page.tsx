@@ -11,8 +11,75 @@ import {
 } from '../../store/request/requestSlice';
 import { useRequestQuery } from '../useRequestQuery';
 
+/* ------------------------------------------------------------------ */
+/*  PRESENTATION HELPERS (styling only — no business logic)           */
+/*  Same Earthy Warm look as the Requests / Leave / Permission pages  */
+/* ------------------------------------------------------------------ */
+
 const fieldClassName =
-  'mt-1.5 block w-full rounded-2xl border border-[#ECE3D3] bg-white px-4 py-2.5 text-xs font-semibold text-stone-900 outline-none transition placeholder:text-stone-400 focus:border-[#5D6953] focus:ring-2 focus:ring-[#5D6953]/20';
+  'mt-2 block w-full rounded-2xl border border-[#E5DDCE] bg-white px-4 py-3 text-sm font-semibold text-stone-900 shadow-xs outline-none transition placeholder:font-medium placeholder:text-stone-400 hover:border-[#707C65]/60 focus:border-[#5D6953] focus:ring-2 focus:ring-[#5D6953]/20';
+
+const labelClassName = 'block text-sm font-bold text-stone-800';
+
+const focusRing =
+  'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#5D6953]';
+
+const TYPE_OPTIONS: { value: RegularizationType; label: string; hint: string }[] = [
+  { value: 'MISSED_IN', label: 'Missed check-in', hint: 'Only the IN punch' },
+  { value: 'MISSED_OUT', label: 'Missed check-out', hint: 'Only the OUT punch' },
+  { value: 'BOTH', label: 'Both punches', hint: 'Check-in and check-out' },
+];
+
+type IconProps = { className?: string };
+
+function CalendarIcon({ className = 'h-4 w-4' }: IconProps) {
+  return (
+    <svg className={className} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" aria-hidden="true">
+      <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+      <line x1="16" y1="2" x2="16" y2="6" />
+      <line x1="8" y1="2" x2="8" y2="6" />
+      <line x1="3" y1="10" x2="21" y2="10" />
+    </svg>
+  );
+}
+
+function FingerprintIcon({ className = 'h-4 w-4' }: IconProps) {
+  return (
+    <svg className={className} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" aria-hidden="true">
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M12 11c0 3.517-1.009 6.799-2.753 9.571m-3.44-2.04l.054-.09A13.916 13.916 0 008 11a4 4 0 118 0c0 1.017-.07 2.019-.203 3m-2.118 6.844A21.88 21.88 0 0015.171 17m3.839 1.132c.645-2.266.99-4.659.99-7.132A8 8 0 004 11m0 0a8.003 8.003 0 0115.357-2m1.571 2.493a12.018 12.018 0 01-1.571 5.507"
+      />
+    </svg>
+  );
+}
+
+function CheckCircleIcon({ className = 'h-4 w-4' }: IconProps) {
+  return (
+    <svg className={className} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" aria-hidden="true">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+    </svg>
+  );
+}
+
+function AlertCircleIcon({ className = 'h-4 w-4' }: IconProps) {
+  return (
+    <svg className={className} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" aria-hidden="true">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+    </svg>
+  );
+}
+
+// Display-only date label ("12 Nov 2026"). Guarded so a partial value never throws while rendering.
+const displayDate = (value: string) => {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return '—';
+  return new Date(`${value}T00:00:00`).toLocaleDateString('en-IN', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+  });
+};
 
 export default function ApplyRegularizationPage() {
   const dispatch = useAppDispatch();
@@ -77,12 +144,15 @@ export default function ApplyRegularizationPage() {
     }
   };
 
+  // Display-only values for the template and summary panel
+  const showIn = type === 'MISSED_IN' || type === 'BOTH';
+  const showOut = type === 'MISSED_OUT' || type === 'BOTH';
+  const typeLabel = TYPE_OPTIONS.find((option) => option.value === type)?.label ?? '';
+
   return (
     <div className="relative min-h-screen w-full overflow-x-hidden bg-[#FBF7F0] font-sans text-stone-800 antialiased selection:bg-[#707C65] selection:text-white p-3 sm:p-5 md:p-7 lg:p-9">
-      
-      {/* ========================================================
-          1. ORGANIC ABSTRACT CANVAS ARTWORK BACKDROP
-          ======================================================== */}
+
+      {/* 1. Organic Abstract Canvas Artwork Backdrop */}
       <div
         aria-hidden="true"
         className="pointer-events-none fixed inset-0 z-0 overflow-hidden select-none"
@@ -127,173 +197,262 @@ export default function ApplyRegularizationPage() {
         </svg>
       </div>
 
-      {/* ========================================================
-          2. MAIN ELEVATED CONTAINER BOARD
-          ======================================================== */}
-      <main className="relative z-10 mx-auto flex w-full max-w-[1580px] flex-col gap-5 rounded-[36px] sm:rounded-[42px] border border-[#ECE3D3]/90 bg-[#FCFAF7] p-4 shadow-[0_24px_70px_rgba(72,60,45,0.08)] backdrop-blur-sm sm:p-6 lg:p-8">
-        
-        {/* Top App Bar Navigation */}
+      {/* 2. Main Elevated Container Board */}
+      <main className="relative z-10 mx-auto flex w-full max-w-[1580px] flex-col gap-5 rounded-[36px] sm:rounded-[42px] border border-[#ECE3D3]/80 bg-[#FCFAF7] p-4 shadow-[0_24px_64px_rgba(72,60,45,0.08)] backdrop-blur-sm sm:p-6 lg:p-8">
         <TopNav active="request" />
 
-        {/* Navigation Breadcrumb and Back Action */}
-        <div className="flex items-center justify-between">
+        {/* Header bar: back link + step note */}
+        <div className="mt-2 flex flex-wrap items-center justify-between gap-3 border-b border-[#ECE3D3] pb-4">
           <Link
             href="/requests"
-            className="inline-flex items-center gap-2 rounded-xl border border-[#ECE3D3] bg-white px-4 py-2 text-xs font-bold text-stone-700 shadow-2xs transition hover:bg-[#F6F8F3] hover:text-[#5D6953] active:scale-95"
+            className={`inline-flex items-center gap-2 rounded-2xl border border-[#D9E2D2] bg-[#F6F8F3] px-5 py-3 text-sm font-bold text-[#46513F] shadow-xs transition hover:border-[#5D6953] hover:bg-[#EAF0E6] active:scale-95 ${focusRing}`}
           >
             <span aria-hidden="true">←</span>
             Back to requests
           </Link>
-          <span className="hidden text-xs font-semibold text-stone-400 sm:inline-block">
-            Step 1 of 1 · Attendance Correction
+          <span className="hidden rounded-xl border border-[#E5DDCE] bg-[#F7F3EB] px-4 py-2 text-sm font-bold text-[#46513F] sm:inline-block">
+            Step 1 of 1 · Attendance correction
           </span>
         </div>
 
-        {/* Section Container Card */}
-        <section className="rounded-3xl border border-[#ECE3D3] bg-[#FCFAF7] p-5 shadow-xs sm:p-8">
-          {submitted ? (
-            /* Success Feedback State */
-            <div className="py-12 text-center">
-              <span className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl border border-[#D9E2D2] bg-[#F6F8F3] text-2xl font-black text-[#5D6953] shadow-xs">
-                ✓
+        {submitted ? (
+          /* ============ SUCCESS STATE ============ */
+          <section
+            role="status"
+            className="overflow-hidden rounded-3xl border border-[#E5DDCE] bg-white shadow-md"
+          >
+            <span aria-hidden="true" className="block h-1.5 w-full bg-[#5D6953]" />
+            <div className="px-6 py-14 text-center sm:py-20">
+              <span className="mx-auto flex h-20 w-20 items-center justify-center rounded-3xl bg-[#5D6953] text-white shadow-md ring-1 ring-black/5">
+                <CheckCircleIcon className="h-10 w-10" />
               </span>
-              <span className="mt-5 inline-block text-[10px] font-black uppercase tracking-widest text-[#707C65]">
+              <span className="mt-6 inline-block text-xs font-black uppercase tracking-widest text-[#5D6953]">
                 CORRECTION RECORD SUBMITTED
               </span>
-              <h1 className="mt-1 text-2xl font-black text-stone-900 sm:text-3xl">
+              <h1 className="mt-1 text-3xl font-black text-stone-900 sm:text-4xl">
                 Request submitted
               </h1>
-              <p className="mx-auto mt-2 max-w-md text-xs font-medium leading-relaxed text-stone-500 sm:text-sm">
+              <p className="mx-auto mt-3 max-w-md text-sm leading-relaxed text-stone-600 sm:text-base">
                 Your regularization request has been submitted for approval. You can close this tab or return to request history.
               </p>
               <Link
                 href="/requests"
-                className="mt-6 inline-flex rounded-xl bg-[#5D6953] px-6 py-2.5 text-xs font-bold uppercase tracking-wider text-white shadow-xs transition hover:bg-[#4D5844] active:scale-95"
+                className={`mt-8 inline-flex items-center gap-2 rounded-2xl bg-[#C87961] px-6 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-[#B86A54] active:scale-95 ${focusRing}`}
               >
                 Return to requests
               </Link>
             </div>
-          ) : (
-            <>
-              {/* Card Header */}
-              <header className="border-b border-[#ECE3D3] pb-5">
-                <span className="inline-flex items-center gap-1.5 rounded-full border border-[#D9E2D2] bg-[#F6F8F3] px-3.5 py-1 text-[10px] font-black uppercase tracking-wider text-[#5D6953]">
-                  <span className="h-1.5 w-1.5 rounded-full bg-[#5D6953]" />
-                  Attendance Regularization
-                </span>
-                <h1 className="mt-2 text-2xl font-black text-stone-900 sm:text-3xl">
-                  Regularize a punch
-                </h1>
-                <p className="mt-1 text-xs text-stone-500 sm:text-sm">
+          </section>
+        ) : (
+          /* ============ FORM STATE ============ */
+          <div className="grid grid-cols-1 items-start gap-5 xl:grid-cols-[minmax(0,1fr)_380px]">
+            {/* ---------- Form card ---------- */}
+            <section
+              aria-label="Regularization request form"
+              className="overflow-hidden rounded-3xl border border-[#E5DDCE] bg-[#FCFAF7] shadow-md"
+            >
+              {/* Section header bar */}
+              <div className="flex flex-wrap items-center justify-between gap-4 border-b border-[#E5DDCE] bg-gradient-to-r from-white to-[#FAF7F0] px-5 py-5 sm:px-6">
+                <div className="flex items-center gap-3.5">
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[#5D6953] text-white shadow-sm ring-1 ring-black/5">
+                    <FingerprintIcon className="h-6 w-6" />
+                  </div>
+                  <div>
+                    <span className="text-xs font-black uppercase tracking-widest text-[#5D6953]">
+                      ATTENDANCE REGULARIZATION
+                    </span>
+                    <h1 className="text-xl font-black text-stone-900 sm:text-2xl">Regularize a punch</h1>
+                  </div>
+                </div>
+                <p className="max-w-sm text-sm leading-relaxed text-stone-600">
                   Select the work date and missing punches. Timestamps will be formatted in India Standard Time (IST, UTC+05:30).
                 </p>
-              </header>
+              </div>
 
-              {/* Form Grid */}
-              <form className="mt-6 space-y-5" onSubmit={submitRequest}>
-                <div className="grid grid-cols-1 gap-x-5 gap-y-4 sm:grid-cols-2">
-                  
-                  {/* Work Date */}
-                  <label className="block text-xs font-bold text-stone-700">
-                    Work date <span className="text-[#C85D44]">*</span>
-                    <input
-                      type="date"
-                      required
-                      value={workDate}
-                      onChange={(event) => setWorkDate(event.target.value)}
-                      className={fieldClassName}
-                    />
-                  </label>
+              <form className="space-y-6 p-4 sm:p-6" onSubmit={submitRequest}>
+                {/* Group 1: Missing punch type */}
+                <fieldset className="rounded-2xl border border-[#E5ECE0] bg-[#F6F8F3] p-4 sm:p-5">
+                  <legend className="px-2 text-xs font-black uppercase tracking-wider text-[#5D6953]">
+                    Missing punch type
+                  </legend>
+                  <div
+                    role="radiogroup"
+                    aria-label="Missing punch type"
+                    className="grid grid-cols-1 gap-2.5 sm:grid-cols-3"
+                  >
+                    {TYPE_OPTIONS.map((option) => {
+                      const active = type === option.value;
+                      return (
+                        <button
+                          key={option.value}
+                          type="button"
+                          role="radio"
+                          aria-checked={active}
+                          onClick={() => setType(option.value)}
+                          className={`flex flex-col items-start rounded-2xl px-4 py-3 text-left transition ${focusRing} ${
+                            active
+                              ? 'bg-[#5D6953] text-white shadow-sm'
+                              : 'border border-[#D9E2D2] bg-white text-stone-700 hover:border-[#5D6953] hover:bg-[#EAF0E6]'
+                          }`}
+                        >
+                          <span className="text-sm font-black">{option.label}</span>
+                          <span
+                            className={`mt-0.5 text-xs font-medium ${
+                              active ? 'text-[#E8EEDF]' : 'text-stone-500'
+                            }`}
+                          >
+                            {option.hint}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </fieldset>
 
-                  {/* Missing Punch Selector */}
-                  <label className="block text-xs font-bold text-stone-700">
-                    Missing punch type <span className="text-[#C85D44]">*</span>
-                    <select
-                      value={type}
-                      onChange={(event) => {
-                        const value = event.target.value;
-                        if (value === 'MISSED_IN' || value === 'MISSED_OUT' || value === 'BOTH') {
-                          setType(value);
-                        }
-                      }}
-                      className={fieldClassName}
-                    >
-                      <option value="MISSED_IN">Missed check-in only</option>
-                      <option value="MISSED_OUT">Missed check-out only</option>
-                      <option value="BOTH">Both check-in and check-out</option>
-                    </select>
-                  </label>
-
-                  {/* Claimed Check-in Time */}
-                  {(type === 'MISSED_IN' || type === 'BOTH') && (
-                    <label className="block text-xs font-bold text-stone-700">
-                      Claimed check-in time <span className="text-[#C85D44]">*</span>
+                {/* Group 2: Date & punch times */}
+                <fieldset className="rounded-2xl border border-[#F2E7D3] bg-[#FDF9F0] p-4 sm:p-5">
+                  <legend className="px-2 text-xs font-black uppercase tracking-wider text-[#9B6A38]">
+                    Date &amp; punch times
+                  </legend>
+                  <div className="grid grid-cols-1 gap-x-5 gap-y-4 sm:grid-cols-2 xl:grid-cols-3">
+                    {/* Work Date */}
+                    <label className={labelClassName}>
+                      Work date <span className="text-[#C85D44]">*</span>
                       <input
-                        type="time"
+                        type="date"
                         required
-                        value={claimedIn}
-                        onChange={(event) => setClaimedIn(event.target.value)}
+                        value={workDate}
+                        onChange={(event) => setWorkDate(event.target.value)}
                         className={fieldClassName}
                       />
                     </label>
-                  )}
 
-                  {/* Claimed Check-out Time */}
-                  {(type === 'MISSED_OUT' || type === 'BOTH') && (
-                    <label className="block text-xs font-bold text-stone-700">
-                      Claimed check-out time <span className="text-[#C85D44]">*</span>
-                      <input
-                        type="time"
-                        required
-                        value={claimedOut}
-                        onChange={(event) => setClaimedOut(event.target.value)}
-                        className={fieldClassName}
-                      />
-                    </label>
-                  )}
+                    {/* Claimed Check-in Time */}
+                    {showIn && (
+                      <label className={labelClassName}>
+                        Claimed check-in time <span className="text-[#C85D44]">*</span>
+                        <input
+                          type="time"
+                          required
+                          value={claimedIn}
+                          onChange={(event) => setClaimedIn(event.target.value)}
+                          className={fieldClassName}
+                        />
+                      </label>
+                    )}
 
-                  {/* Reason Textarea */}
-                  <label className="block text-xs font-bold text-stone-700 sm:col-span-2">
+                    {/* Claimed Check-out Time */}
+                    {showOut && (
+                      <label className={labelClassName}>
+                        Claimed check-out time <span className="text-[#C85D44]">*</span>
+                        <input
+                          type="time"
+                          required
+                          value={claimedOut}
+                          onChange={(event) => setClaimedOut(event.target.value)}
+                          className={fieldClassName}
+                        />
+                      </label>
+                    )}
+                  </div>
+                </fieldset>
+
+                {/* Group 3: Reason */}
+                <fieldset className="rounded-2xl border border-[#E5DDCE] bg-[#F7F3EB] p-4 sm:p-5">
+                  <legend className="px-2 text-xs font-black uppercase tracking-wider text-[#46513F]">
+                    Details
+                  </legend>
+                  <label className={labelClassName}>
                     Reason for correction <span className="text-[#C85D44]">*</span>
                     <textarea
                       required
-                      rows={4}
+                      rows={6}
                       maxLength={1000}
                       value={reason}
                       onChange={(event) => setReason(event.target.value)}
                       placeholder="Explain why the punch was missed (e.g. biometric reader failure, client location visit, badge lost)..."
                       className={`${fieldClassName} resize-y leading-relaxed`}
                     />
+                    <span className="mt-1.5 block text-right text-xs font-medium tabular-nums text-stone-400">
+                      {reason.length}/1000
+                    </span>
                   </label>
-                </div>
+                </fieldset>
 
                 {/* Error Banner */}
                 {error && (
-                  <p role="alert" className="rounded-xl border border-[#F3D7CB] bg-[#FAEEE5] px-4 py-3 text-xs font-bold text-[#C85D44]">
-                    {error}
+                  <p
+                    role="alert"
+                    className="flex items-center gap-2.5 rounded-2xl border border-[#F3D7CB] bg-[#FAEEE5] px-5 py-4 text-sm font-bold text-[#C85D44]"
+                  >
+                    <AlertCircleIcon className="h-5 w-5 shrink-0" />
+                    <span>{error}</span>
                   </p>
                 )}
 
                 {/* Form Actions */}
-                <div className="flex flex-col-reverse gap-2.5 border-t border-[#ECE3D3] pt-5 sm:flex-row sm:justify-end">
+                <div className="flex flex-col-reverse gap-3 border-t border-[#ECE3D3] pt-5 sm:flex-row sm:justify-end">
                   <Link
                     href="/requests"
-                    className="rounded-xl border border-[#ECE3D3] bg-white px-5 py-2.5 text-center text-xs font-bold text-stone-600 transition hover:bg-[#F6F8F3] hover:text-[#5D6953]"
+                    className={`rounded-2xl border border-[#E5DDCE] bg-white px-6 py-3 text-center text-sm font-bold text-stone-700 transition hover:bg-[#F6F8F3] hover:text-[#5D6953] active:scale-95 ${focusRing}`}
                   >
                     Cancel
                   </Link>
                   <button
                     type="submit"
                     disabled={isSubmitting}
-                    className="rounded-xl bg-[#5D6953] px-6 py-2.5 text-xs font-bold uppercase tracking-wider text-white shadow-xs transition hover:bg-[#4D5844] active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"
+                    className="rounded-2xl bg-[#C87961] px-7 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-[#B86A54] active:scale-95 disabled:cursor-not-allowed disabled:opacity-60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#C87961]"
                   >
                     {isSubmitting ? 'Submitting…' : 'Submit request'}
                   </button>
                 </div>
               </form>
-            </>
-          )}
-        </section>
+            </section>
+
+            {/* ---------- Live summary panel ---------- */}
+            <aside
+              aria-label="Request summary"
+              className="flex flex-col gap-4 xl:sticky xl:top-6"
+            >
+              <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#5D6953] to-[#414B3A] p-5 text-white shadow-md">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="rounded-lg bg-white/15 px-3 py-1.5 text-xs font-black uppercase leading-tight tracking-wider text-[#E8EEDF]">
+                    REQUEST SUMMARY
+                  </span>
+                  <CalendarIcon className="h-5 w-5 shrink-0 text-white/80" />
+                </div>
+
+                <div className="mt-5">
+                  <p className="text-sm font-semibold text-[#D8DEC7]">Work date</p>
+                  <p className="mt-0.5 text-3xl font-black text-white">{displayDate(workDate)}</p>
+                </div>
+
+                <div className="mt-5 space-y-2.5 border-t border-white/15 pt-4 text-sm">
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="font-semibold text-[#D8DEC7]">Correction</span>
+                    <span className="font-black text-white">{typeLabel}</span>
+                  </div>
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="font-semibold text-[#D8DEC7]">Check-in</span>
+                    <span className="font-black text-white">
+                      {showIn ? claimedIn || '—' : 'Not needed'}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="font-semibold text-[#D8DEC7]">Check-out</span>
+                    <span className="font-black text-white">
+                      {showOut ? claimedOut || '—' : 'Not needed'}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="font-semibold text-[#D8DEC7]">Timezone</span>
+                    <span className="font-black text-white">IST (UTC+05:30)</span>
+                  </div>
+                </div>
+              </div>
+            </aside>
+          </div>
+        )}
       </main>
     </div>
   );
