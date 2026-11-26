@@ -1,3 +1,4 @@
+import { authenticatedFetch } from "../auth/authenticatedFetch";
 import { createAsyncThunk, createSlice } from '@reduxjs/toolkit';
 import { logout } from '../auth/authSlice';
 
@@ -31,7 +32,7 @@ export interface EmployeeProfile {
 	pending_requests: ProfileRequest[];
 }
 export type ProfileSection = 'addresses' | 'emergency-contacts' | 'family-members' | 'qualifications' | 'work-experiences';
-export type RequestSection = ProfileSection | 'identity-details';
+export type RequestSection = ProfileSection | 'identity-details' | 'personal-details';
 export interface SectionData {
 	addresses?: ProfileRecord[];
 	contacts?: ProfileRecord[];
@@ -85,7 +86,7 @@ function authHeaders(): HeadersInit {
 }
 
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
-	const response = await fetch(`${API_BASE_URL}${BASE_PATH}${path}`, { ...options, headers: { ...authHeaders(), ...options.headers } });
+	const response = await authenticatedFetch(`${API_BASE_URL}${BASE_PATH}${path}`, { ...options, headers: { ...authHeaders(), ...options.headers } });
 	let result: ApiResponse<T>;
 	try { result = await response.json() as ApiResponse<T>; }
 	catch { throw new Error(`Profile request failed (${response.status}).`); }
@@ -107,9 +108,9 @@ export const fetchProfileSection = createAsyncThunk<{ section: ProfileSection; d
 	}
 );
 
-export const submitProfileRequest = createAsyncThunk<void, { section: RequestSection; payload: RequestPayload }, { rejectValue: string }>(
+export const submitProfileRequest = createAsyncThunk<{ request?: ProfileRequest }, { section: RequestSection; payload: RequestPayload }, { rejectValue: string }>(
 	'profile/submitRequest', async ({ section, payload }, { rejectWithValue }) => {
-		try { await request<unknown>(`/me/${section}/request`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }); }
+		try { return await request<{ request?: ProfileRequest }>(`/me/${section}/request`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }); }
 		catch (error) { return rejectWithValue(errorMessage(error)); }
 	}
 );
@@ -117,7 +118,7 @@ export const submitProfileRequest = createAsyncThunk<void, { section: RequestSec
 export const fetchProfilePicture = createAsyncThunk<string, void, { rejectValue: string }>(
 	'profile/fetchPicture', async (_, { rejectWithValue }) => {
 		try {
-			const response = await fetch(`${API_BASE_URL}${BASE_PATH}/me/profile-picture`, { headers: authHeaders() });
+			const response = await authenticatedFetch(`${API_BASE_URL}${BASE_PATH}/me/profile-picture`, { headers: authHeaders() });
 			if (!response.ok) {
 				const result = await response.json().catch(() => null) as ApiResponse<unknown> | null;
 				throw new Error(result?.message || `Unable to load profile picture (${response.status}).`);
@@ -176,7 +177,13 @@ const profileSlice = createSlice({
 			.addCase(fetchProfileSection.fulfilled, (state, action) => { const section = action.meta.arg; if (state.sectionRequestIds[section] !== action.meta.requestId) return; state.sectionLoading[section] = false; state.sections[section] = action.payload.data; })
 			.addCase(fetchProfileSection.rejected, (state, action) => { const section = action.meta.arg; if (state.sectionRequestIds[section] !== action.meta.requestId) return; state.sectionLoading[section] = false; state.sectionError[section] = action.payload || 'Unable to load section.'; })
 			.addCase(submitProfileRequest.pending, (state) => { state.submitting = true; state.submitError = null; })
-			.addCase(submitProfileRequest.fulfilled, (state) => { state.submitting = false; })
+			.addCase(submitProfileRequest.fulfilled, (state, action) => {
+				state.submitting = false;
+				if (action.meta.arg.section === 'personal-details' && action.payload.request && state.data) {
+					const submitted = action.payload.request;
+					state.data.pending_requests = [submitted, ...(state.data.pending_requests ?? []).filter((item) => item.id !== submitted.id)];
+				}
+			})
 			.addCase(submitProfileRequest.rejected, (state, action) => { state.submitting = false; state.submitError = action.payload || 'Unable to submit request.'; })
 			.addCase(fetchProfilePicture.pending, (state, action) => { state.pictureLoading = true; state.pictureError = null; state.pictureRequestId = action.meta.requestId; })
 			.addCase(fetchProfilePicture.fulfilled, (state, action) => { if (state.pictureRequestId !== action.meta.requestId) return; state.pictureLoading = false; state.picture = action.payload; })

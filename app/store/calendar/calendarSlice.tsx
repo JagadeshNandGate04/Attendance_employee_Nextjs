@@ -1,3 +1,4 @@
+import { authenticatedFetch } from "../auth/authenticatedFetch";
 import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
 
 export interface CalendarAttendance {
@@ -80,7 +81,7 @@ export const fetchMyCalendar = createAsyncThunk<
       month: String(month),
       year: String(year),
     });
-    const response = await fetch(
+    const response = await authenticatedFetch(
       `${API_BASE_URL}/api/v1/employees/me/calendar?${params.toString()}`,
       {
         headers: {

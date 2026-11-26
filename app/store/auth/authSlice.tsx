@@ -2,6 +2,7 @@
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
 import type { AppDispatch } from "@/app/store/store";
 import { clearSessionQuote } from "@/app/store/quoteService";
+import { authenticatedFetch } from "./authenticatedFetch";
 
 // ===============================
 // USER INTERFACE
@@ -54,6 +55,7 @@ interface LoginResponseData {
 interface RefreshResponseData {
   token: string;
   expires_in: number;
+  refresh_token?: string;
 }
 
 interface ApiResponse<T> {
@@ -362,9 +364,11 @@ export const refreshAuthToken =
       if (!refreshToken) {
         return {
           success: false,
-          message: "Refresh token is required",
+          message: "Your session has expired. Please sign in again.",
+          reauthenticate: true,
         };
       }
+      const originalToken = localStorage.getItem("token");
 
       const requestData: RefreshTokenRequest = {
         refresh_token: refreshToken,
@@ -390,13 +394,27 @@ export const refreshAuthToken =
 
         return {
           success: false,
-          message,
+          message: response.status === 400 || response.status === 401 || response.status === 403
+            ? "Your session has expired. Please sign in again."
+            : message,
+          reauthenticate: response.status === 400 || response.status === 401 || response.status === 403,
         };
+      }
+
+      if (
+        localStorage.getItem("refreshToken") !== refreshToken ||
+        localStorage.getItem("token") !== originalToken
+      ) {
+        return { success: false, message: "Your session changed. Please sign in again." };
       }
 
       // Update access token in Redux
       dispatch(setToken(data.data.token));
       dispatch(setExpiresIn(data.data.expires_in));
+      if (data.data.refresh_token) {
+        dispatch(setRefreshToken(data.data.refresh_token));
+        localStorage.setItem("refreshToken", data.data.refresh_token);
+      }
 
       // Update access token in localStorage
       localStorage.setItem("token", data.data.token);
@@ -446,7 +464,7 @@ export const changePassword =
         throw new Error("Authentication token not found. Please login again.");
       }
 
-      const response = await fetch(
+      const response = await authenticatedFetch(
         getApiUrl("/api/v1/auth/changepassword"),
         {
           method: "POST",

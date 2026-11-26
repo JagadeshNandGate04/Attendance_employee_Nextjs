@@ -1,3 +1,4 @@
+import { authenticatedFetch } from "../auth/authenticatedFetch";
 import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
 
 export interface DashboardEmployee {
@@ -122,7 +123,7 @@ export const fetchMyDashboard = createAsyncThunk<
   { rejectValue: string }
 >("dashboard/fetchMyDashboard", async (_, { rejectWithValue }) => {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/v1/employees/me/dashboard`, {
+    const response = await authenticatedFetch(`${API_BASE_URL}/api/v1/employees/me/dashboard`, {
       method: "GET",
       headers: getAuthHeaders(),
     });
@@ -150,7 +151,7 @@ export const fetchMyBirthdays = createAsyncThunk<
   { rejectValue: string }
 >("dashboard/fetchMyBirthdays", async (_, { rejectWithValue }) => {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/v1/notifications/me/birthdays`, {
+    const response = await authenticatedFetch(`${API_BASE_URL}/api/v1/notifications/me/birthdays`, {
       method: "GET",
       headers: getAuthHeaders(),
     });

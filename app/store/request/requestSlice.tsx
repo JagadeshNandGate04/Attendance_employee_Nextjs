@@ -1,3 +1,4 @@
+import { authenticatedFetch } from "../auth/authenticatedFetch";
 import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
 
 export interface LeaveRequestPayload {
@@ -198,7 +199,7 @@ export const fetchMyLeaveRequests = createAsyncThunk<
   { rejectValue: string }
 >("requests/fetchMyLeaveRequests", async (filter, { rejectWithValue }) => {
   try {
-    const response = await fetch(
+    const response = await authenticatedFetch(
       `${API_BASE_URL}/api/v1/leave/me/requests${getMonthQuery(filter)}`,
       { headers: getAuthHeaders() }
     );
@@ -220,7 +221,7 @@ export const fetchMyPermissionRequests = createAsyncThunk<
   { rejectValue: string }
 >("requests/fetchMyPermissionRequests", async (filter, { rejectWithValue }) => {
   try {
-    const response = await fetch(
+    const response = await authenticatedFetch(
       `${API_BASE_URL}/api/v1/permission/me/permission/requests${getMonthQuery(filter)}`,
       { headers: getAuthHeaders() }
     );
@@ -242,7 +243,7 @@ export const fetchMyRegularizationRequests = createAsyncThunk<
   { rejectValue: string }
 >("requests/fetchMyRegularizationRequests", async (filter, { rejectWithValue }) => {
   try {
-    const response = await fetch(
+    const response = await authenticatedFetch(
       `${API_BASE_URL}/api/v1/regularization/me${getMonthQuery(filter)}`,
       { headers: getAuthHeaders() }
     );
@@ -267,7 +268,7 @@ export const applyForLeave = createAsyncThunk<
   { rejectValue: string }
 >("requests/applyForLeave", async (payload, { rejectWithValue }) => {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/v1/leave/me/apply`, {
+    const response = await authenticatedFetch(`${API_BASE_URL}/api/v1/leave/me/apply`, {
       method: "POST",
       headers: {
         ...getAuthHeaders(),
@@ -296,7 +297,7 @@ export const cancelMyLeaveRequest = createAsyncThunk<
   { rejectValue: string }
 >("requests/cancelMyLeaveRequest", async ({ id }, { rejectWithValue }) => {
   try {
-    const response = await fetch(
+    const response = await authenticatedFetch(
       `${API_BASE_URL}/api/v1/leave/me/${encodeURIComponent(id)}/cancel`,
       {
         method: "POST",
@@ -321,7 +322,7 @@ export const fetchMyPermissionBalance = createAsyncThunk<
   { rejectValue: string }
 >("requests/fetchMyPermissionBalance", async (_, { rejectWithValue }) => {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/v1/permission/me/balance`, {
+    const response = await authenticatedFetch(`${API_BASE_URL}/api/v1/permission/me/balance`, {
       headers: getAuthHeaders(),
     });
     const result = await readApiResponse<PermissionBalance>(response, "Permission balance request");
@@ -342,7 +343,7 @@ export const applyForPermission = createAsyncThunk<
   { rejectValue: string }
 >("requests/applyForPermission", async (payload, { rejectWithValue }) => {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/v1/permission/me/apply`, {
+    const response = await authenticatedFetch(`${API_BASE_URL}/api/v1/permission/me/apply`, {
       method: "POST",
       headers: {
         ...getAuthHeaders(),
@@ -368,7 +369,7 @@ export const applyForRegularization = createAsyncThunk<
   { rejectValue: string }
 >("requests/applyForRegularization", async (payload, { rejectWithValue }) => {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/v1/regularization/me/apply`, {
+    const response = await authenticatedFetch(`${API_BASE_URL}/api/v1/regularization/me/apply`, {
       method: "POST",
       headers: {
         ...getAuthHeaders(),
@@ -397,7 +398,7 @@ export const cancelMyPermissionRequest = createAsyncThunk<
   { rejectValue: string }
 >("requests/cancelMyPermissionRequest", async ({ id }, { rejectWithValue }) => {
   try {
-    const response = await fetch(
+    const response = await authenticatedFetch(
       `${API_BASE_URL}/api/v1/permission/me/${encodeURIComponent(id)}/cancel`,
       {
         method: "POST",

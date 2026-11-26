@@ -1,3 +1,4 @@
+import { authenticatedFetch } from "../auth/authenticatedFetch";
 import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
 
 export interface EmployeeNotification {
@@ -127,7 +128,7 @@ export const fetchMyNotifications = createAsyncThunk<
   { rejectValue: string }
 >("notifications/fetchMyNotifications", async (_, { rejectWithValue }) => {
   try {
-    const response = await fetch(`${NOTIFICATIONS_URL}/get-notifications`, {
+    const response = await authenticatedFetch(`${NOTIFICATIONS_URL}/get-notifications`, {
       headers: getAuthHeaders(),
     });
     const result = await readApiResponse<{
@@ -146,7 +147,7 @@ export const fetchMyUnreadNotificationCount = createAsyncThunk<
   { rejectValue: string }
 >("notifications/fetchUnreadCount", async (_, { rejectWithValue }) => {
   try {
-    const response = await fetch(`${NOTIFICATIONS_URL}/unread-count`, {
+    const response = await authenticatedFetch(`${NOTIFICATIONS_URL}/unread-count`, {
       headers: getAuthHeaders(),
     });
     const result = await readApiResponse<{ unread_count: number }>(response);
@@ -162,7 +163,7 @@ export const markAllNotificationsAsRead = createAsyncThunk<
   { rejectValue: string }
 >("notifications/markAllAsRead", async (_, { rejectWithValue }) => {
   try {
-    const response = await fetch(`${NOTIFICATIONS_URL}/read-all`, {
+    const response = await authenticatedFetch(`${NOTIFICATIONS_URL}/read-all`, {
       method: "PATCH",
       headers: getAuthHeaders(),
     });
@@ -179,7 +180,7 @@ export const markNotificationAsRead = createAsyncThunk<
   { rejectValue: string }
 >("notifications/markAsRead", async (id, { rejectWithValue }) => {
   try {
-    const response = await fetch(
+    const response = await authenticatedFetch(
       `${NOTIFICATIONS_URL}/${encodeURIComponent(id)}/read`,
       {
         method: "PATCH",

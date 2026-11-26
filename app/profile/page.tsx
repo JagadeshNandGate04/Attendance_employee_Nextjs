@@ -18,14 +18,15 @@ type Section = { id: string; title: string; description: string; icon: LucideIco
 type Draft = Record<string, string>;
 
 const sections: Section[] = [
-  { id: 'personal', title: 'Personal details', description: 'Your basic information and identity.', icon: CircleUserRound, fields: [
+  { id: 'personal', title: 'Personal details', description: 'Your basic information and identity.', icon: CircleUserRound, request: 'personal-details', allowUpdate: true, fields: [
     { key: 'name', label: 'Full name' }, { key: 'date_of_birth', label: 'Date of birth', type: 'date' },
-    { key: 'marital_status', label: 'Marital status' }, { key: 'father_spouse_name', label: 'Father or spouse name' },
+    { key: 'marital_status', label: 'Marital status', options: ['Married', 'Unmarried'] }, { key: 'father_spouse_name', label: 'Father or spouse name' },
     { key: 'religion', label: 'Religion' }, { key: 'caste', label: 'Caste' }, { key: 'mother_tongue', label: 'Mother tongue' },
     { key: 'city_of_birth', label: 'City of birth' }, { key: 'country_of_birth', label: 'Country of birth' },
     { key: 'nationality', label: 'Nationality' }, { key: 'community', label: 'Community' },
-    { key: 'blood_group', label: 'Blood group' }, { key: 'height_cm', label: 'Height (cm)' }, { key: 'weight_kg', label: 'Weight (kg)' },
-    { key: 'highest_qualification_level', label: 'Highest qualification' }, { key: 'retirement_age', label: 'Retirement age' },
+    { key: 'official_email', label: 'Official email', type: 'email' },
+    { key: 'blood_group', label: 'Blood group' }, { key: 'height_cm', label: 'Height (cm)', type: 'number' }, { key: 'weight_kg', label: 'Weight (kg)', type: 'number' },
+    { key: 'highest_qualification_level', label: 'Highest qualification' }, { key: 'retirement_age', label: 'Retirement age', type: 'number' },
   ] },
   { id: 'employment', title: 'Employment', description: 'Your details at the organization.', icon: BriefcaseBusiness, fields: [
     { key: 'emp_code', label: 'Employee code' }, { key: 'designation', label: 'Designation' },
@@ -72,6 +73,12 @@ const sections: Section[] = [
   ] },
 ];
 
+const personalEditableFields = new Set([
+  'date_of_birth', 'marital_status', 'father_spouse_name', 'religion', 'mother_tongue',
+  'city_of_birth', 'country_of_birth', 'nationality', 'official_email', 'retirement_age',
+  'highest_qualification_level', 'blood_group', 'height_cm', 'weight_kg',
+]);
+
 // Shared UI class strings
 const inputClass = 'mt-1.5 block h-11 w-full min-w-0 rounded-xl border border-[#E5DDCE] bg-white px-3.5 text-[15px] font-medium text-stone-800 shadow-sm outline-none transition placeholder:text-stone-400 hover:border-[#707C65]/50 focus:border-[#707C65] focus:ring-4 focus:ring-[#707C65]/15';
 const focusRing = 'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#5D6953]';
@@ -85,6 +92,15 @@ function displayValue(value: ProfileRecord[string] | undefined, field?: Field): 
     if (!Number.isNaN(date.getTime())) return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit', day: '2-digit' }).format(date);
   }
   return String(value);
+}
+
+function valuesMatch(left: ProfileRecord[string] | undefined, right: ProfileRecord[string] | undefined, field?: Field): boolean {
+  const leftValue = displayValue(left, field);
+  const rightValue = displayValue(right, field);
+  if (field?.type === 'number' && leftValue !== '' && rightValue !== '') {
+    return Number(leftValue) === Number(rightValue);
+  }
+  return leftValue === rightValue;
 }
 
 function getRecords(section: Section, data: EmployeeProfile, sectionData?: SectionData): ProfileRecord[] {
@@ -155,6 +171,7 @@ export default function ProfilePage() {
   const [original, setOriginal] = useState<ProfileRecord | null>(null);
   const [notice, setNotice] = useState('');
   const [formError, setFormError] = useState('');
+  const [personalTab, setPersonalTab] = useState<'details' | 'pending'>('details');
   const fileRef = useRef<HTMLInputElement>(null);
   
   const active = sections.find((section) => section.id === activeId) ?? sections[0];
@@ -172,11 +189,12 @@ export default function ProfilePage() {
   const records = data ? getRecords(active, data, selectedData) : [];
   const pendingSection = active.id === 'personal' ? 'PERSONAL' : active.id === 'identity' ? 'IDENTITY' : '';
   const pending = active.api ? selectedData?.pending_requests ?? [] : (data?.pending_requests ?? []).filter((item) => item.section === pendingSection && pendingSection !== '');
+  const editFields = active.id === 'personal' ? active.fields.filter((field) => personalEditableFields.has(field.key)) : active.fields;
   const displayName = displayValue(data?.employee?.name) || 'Your profile';
 
   function startEditing(record: ProfileRecord | null) {
     const values: Draft = {};
-    active.fields.forEach((field) => { values[field.key] = displayValue(record?.[field.key], field); });
+    editFields.forEach((field) => { values[field.key] = displayValue(record?.[field.key], field); });
     if (!record && active.id === 'family') values.family_member_type = 'FAMILY_MEMBER';
     if (!record && active.id === 'education') values.qualification_type = 'ACADEMIC';
     if (!record && active.id === 'emergency') values.is_primary = 'Yes';
@@ -187,24 +205,38 @@ export default function ProfilePage() {
     event.preventDefault();
     if (!active.request) return;
     const payload: RequestPayload = {};
-    if (active.request !== 'addresses') payload.request_type = original ? 'UPDATE' : 'CREATE';
-    if (original && active.request !== 'addresses') {
+    const personal = active.request === 'personal-details';
+    if (active.request !== 'addresses' && !personal) payload.request_type = original ? 'UPDATE' : 'CREATE';
+    if (original && active.request !== 'addresses' && !personal) {
       if (original.id == null) { setFormError('This record cannot be updated because its ID is missing.'); return; }
       payload.id = original.id;
     }
-    for (const field of active.fields) {
+    let hasChanges = false;
+    for (const field of editFields) {
       const value = draft[field.key] ?? '';
-      if (original && active.request !== 'addresses' && value === displayValue(original[field.key], field)) continue;
+      const changed = !original || value !== displayValue(original[field.key], field);
+      if (changed) hasChanges = true;
+      if (original && active.request !== 'addresses' && !personal && !changed) continue;
       if (field.key === 'is_primary') payload[field.key] = value === 'Yes';
-      else if (field.type === 'number') payload[field.key] = value === '' ? null : Number(value);
+      else if (field.type === 'number') {
+        const number = Number(value);
+        if (value !== '' && (!Number.isFinite(number) || number < 0 || (field.key === 'retirement_age' && !Number.isInteger(number)))) {
+          setFormError(`Enter a valid ${field.label.toLowerCase()}.`); return;
+        }
+        payload[field.key] = value === '' ? null : number;
+      }
       else payload[field.key] = value;
     }
     if (active.request === 'addresses' && !payload.address_type) { setFormError('Select an address type.'); return; }
-    if (Object.keys(payload).length <= (original && active.request !== 'addresses' ? 2 : 1)) { setFormError('Enter at least one change.'); return; }
+    if ((personal && !hasChanges) || (!personal && Object.keys(payload).length <= (original && active.request !== 'addresses' ? 2 : 1))) { setFormError('Enter at least one change.'); return; }
     try {
-      await dispatch(submitProfileRequest({ section: active.request, payload })).unwrap();
+      const result = await dispatch(submitProfileRequest({ section: active.request, payload })).unwrap();
       setEditing(false); setNotice('Your change request has been submitted for approval.'); setFormError('');
-      if (active.api) await dispatch(fetchProfileSection(active.api));
+      if (personal) {
+        setPersonalTab('pending');
+        if (!result.request) await dispatch(fetchEmployeeProfile());
+      }
+      else if (active.api) await dispatch(fetchProfileSection(active.api));
       else await dispatch(fetchEmployeeProfile());
     } catch (reason) { setFormError(typeof reason === 'string' ? reason : 'Unable to submit the request.'); }
   }
@@ -353,7 +385,7 @@ export default function ProfilePage() {
                         key={section.id}
                         type="button"
                         disabled={editing || submitting}
-                        onClick={() => { setActiveId(section.id); setNotice(''); setFormError(''); }}
+                        onClick={() => { setActiveId(section.id); setPersonalTab('details'); setNotice(''); setFormError(''); }}
                         aria-current={selected ? 'true' : undefined}
                         className={`flex shrink-0 items-center gap-3 rounded-xl border px-3 py-2.5 text-left text-sm font-bold transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-50 lg:w-full ${focusRing} ${
                           selected
@@ -397,12 +429,19 @@ export default function ProfilePage() {
                       <p className="mt-0.5 text-sm text-stone-600 sm:text-base">{active.description}</p>
                     </div>
                   </div>
-                  {!editing && active.request && (active.repeatable || records.length === 0) && (
+                  {!editing && active.request && active.id !== 'personal' && (active.repeatable || records.length === 0) && (
                     <button type="button" disabled={sectionLoading || submitting} onClick={() => startEditing(null)} className={`inline-flex h-10 items-center gap-2 rounded-xl bg-[#C87961] px-4 text-sm font-bold text-white shadow-sm transition hover:bg-[#B86A54] active:scale-95 disabled:opacity-50 ${focusRing}`}>
                       <Plus size={16} /> Add details
                     </button>
                   )}
                 </div>
+
+                {active.id === 'personal' && !editing && (
+                  <div className="flex flex-wrap gap-2 border-b border-[#EDD7BE] bg-white px-5 py-3 sm:px-7">
+                    <button type="button" aria-pressed={personalTab === 'details'} onClick={() => setPersonalTab('details')} className={`rounded-lg px-3 py-2 text-sm font-bold ${personalTab === 'details' ? 'bg-[#FDF8F0] text-[#815526]' : 'text-stone-600 hover:bg-[#F6F8F3]'} ${focusRing}`}>Details</button>
+                    <button type="button" aria-pressed={personalTab === 'pending'} onClick={() => setPersonalTab('pending')} className={`rounded-lg px-3 py-2 text-sm font-bold ${personalTab === 'pending' ? 'bg-[#FDF8F0] text-[#815526]' : 'text-stone-600 hover:bg-[#F6F8F3]'} ${focusRing}`}>Pending requests ({pending.length})</button>
+                  </div>
+                )}
 
                 {/* Loading/Error States */}
                 {active.api && sectionLoading && (
@@ -427,16 +466,17 @@ export default function ProfilePage() {
                       </p>
                     </div>
                     <div className="grid gap-x-5 gap-y-5 px-5 pb-6 pt-4 sm:grid-cols-2 sm:px-7 sm:pb-7 xl:grid-cols-3">
-                      {active.fields.map((field) => (
+                      {editFields.map((field) => (
                         <label key={field.key} className={`block text-sm font-bold text-stone-700 ${field.wide ? 'sm:col-span-2' : ''}`}>
                           {field.label}
                           {field.options ? (
                             <select value={draft[field.key] || ''} onChange={(event) => setDraft((current) => ({ ...current, [field.key]: event.target.value }))} className={inputClass}>
                               <option value="">Select {field.label.toLowerCase()}</option>
+                              {draft[field.key] && !field.options.includes(draft[field.key]) && <option value={draft[field.key]}>{draft[field.key]}</option>}
                               {field.options.map((option) => <option key={option} value={option}>{option.replaceAll('_', ' ')}</option>)}
                             </select>
                           ) : (
-                            <input type={field.type || 'text'} value={draft[field.key] || ''} onChange={(event) => setDraft((current) => ({ ...current, [field.key]: event.target.value }))} className={inputClass} />
+                            <input type={field.type || 'text'} step={field.type === 'number' ? (field.key === 'retirement_age' ? '1' : 'any') : undefined} min={field.type === 'number' ? 0 : undefined} value={draft[field.key] || ''} onChange={(event) => setDraft((current) => ({ ...current, [field.key]: event.target.value }))} className={inputClass} />
                           )}
                         </label>
                       ))}
@@ -451,12 +491,12 @@ export default function ProfilePage() {
                           <X size={16} /> Cancel
                         </button>
                         <button type="submit" disabled={submitting} className={`inline-flex h-11 flex-1 items-center justify-center gap-2 rounded-xl bg-[#C87961] px-5 text-sm font-bold text-white shadow-sm transition hover:bg-[#B86A54] active:scale-95 disabled:opacity-50 sm:flex-none ${focusRing}`}>
-                          <Save size={16} /> {submitting ? 'Submitting...' : 'Submit request'}
+                          <Save size={16} /> {submitting ? 'Submitting...' : active.id === 'personal' ? 'Save changes' : 'Submit request'}
                         </button>
                       </div>
                     </div>
                   </form>
-                ) : (
+                ) : active.id !== 'personal' || personalTab === 'details' ? (
                   /* Data Display */
                   <div className={`px-5 py-5 sm:px-7 sm:py-7 ${theme.bg}`}>
                     {!active.request && (
@@ -512,16 +552,23 @@ export default function ProfilePage() {
                       </div>
                     )}
                   </div>
-                )}
+                ) : null}
 
                 {/* Pending Requests */}
-                {pending.length > 0 && (
+                {!editing && ((active.id === 'personal' && personalTab === 'pending') || (active.id !== 'personal' && pending.length > 0)) && (
                   <div className="border-t border-[#EDD7BE] bg-[#FDF8F0] px-5 py-5 sm:px-7 sm:py-6">
                     <div className="flex items-center gap-2.5">
                       <Clock size={18} className="text-[#9B6A38]" aria-hidden="true" />
                       <h3 className="text-base font-black text-stone-900">Pending requests</h3>
                       <span className="rounded-full bg-[#815526] px-2 py-0.5 text-xs font-black tabular-nums text-white">{pending.length}</span>
                     </div>
+                    {active.id === 'personal' && (
+                      <div className="mt-2 flex flex-wrap items-center justify-between gap-3">
+                        <p className="text-sm text-stone-600">Only pending requests are available here. Your profile changes after admin approval.</p>
+                        <button type="button" onClick={() => void dispatch(fetchEmployeeProfile())} className={`text-sm font-bold text-[#815526] underline underline-offset-2 ${focusRing}`}>Refresh status</button>
+                      </div>
+                    )}
+                    {pending.length === 0 && <p className="mt-4 text-sm text-stone-600">No pending personal details requests.</p>}
                     <div className="mt-4 space-y-3">
                       {pending.map((item) => (
                         <div key={item.id} className="rounded-2xl border border-[#EDD7BE] bg-white px-4 py-3.5 shadow-sm">
@@ -529,11 +576,13 @@ export default function ProfilePage() {
                             <span className="text-sm font-black text-[#815526]">{item.request_type} request</span>
                             <span className="rounded-full border border-[#EDD7BE] bg-[#FDF8F0] px-2.5 py-0.5 text-xs font-bold text-[#815526]">{item.status}</span>
                           </div>
+                          {item.created_at && !Number.isNaN(Date.parse(item.created_at)) && <p className="mt-2 text-xs text-stone-500">Submitted {new Date(item.created_at).toLocaleString('en-IN')}</p>}
                           {item.requested_data && (
                             <dl className="mt-3 grid gap-3 border-t border-[#F3E6D3] pt-3 sm:grid-cols-2 xl:grid-cols-3">
-                              {Object.entries(item.requested_data).map(([key, value]) => (
+                              {Object.entries(item.requested_data).filter(([key, value]) => active.id !== 'personal' || !item.existing_data || !valuesMatch(item.existing_data[key], value, active.fields.find((field) => field.key === key))).map(([key, value]) => (
                                 <div key={key} className="min-w-0 text-sm">
                                   <dt className="text-stone-600">{active.fields.find((field) => field.key === key)?.label || key.replaceAll('_', ' ')}</dt>
+                                  {active.id === 'personal' && item.existing_data && <dd className="mt-0.5 break-words text-stone-500">Current: {displayValue(item.existing_data[key], active.fields.find((field) => field.key === key)) || 'Not provided'}</dd>}
                                   <dd className="mt-0.5 break-words font-semibold text-stone-800">{displayValue(value, active.fields.find((field) => field.key === key)) || 'Not provided'}</dd>
                                 </div>
                               ))}

@@ -1,3 +1,4 @@
+import { authenticatedFetch } from "../auth/authenticatedFetch";
 import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
 
 export interface Payslip {
@@ -72,7 +73,7 @@ export const fetchMyPayslips = createAsyncThunk<
   { rejectValue: string }
 >("payslips/fetchMyPayslips", async (_, { rejectWithValue }) => {
   try {
-    const response = await fetch(PAYSLIPS_URL, { headers: getAuthHeaders("application/json") });
+    const response = await authenticatedFetch(PAYSLIPS_URL, { headers: getAuthHeaders("application/json") });
     if (!response.ok) throw new Error(await getResponseError(response, "Loading payslips"));
     let result: ApiResponse<{ total: number; payslips: Payslip[] }>;
     try {
@@ -90,7 +91,7 @@ export const fetchMyPayslips = createAsyncThunk<
 });
 
 const fetchPayslipPdf = async (id: string, action: string) => {
-  const response = await fetch(`${PAYSLIPS_URL}/${encodeURIComponent(id)}/download`, {
+  const response = await authenticatedFetch(`${PAYSLIPS_URL}/${encodeURIComponent(id)}/download`, {
     headers: getAuthHeaders("application/pdf"),
   });
   if (!response.ok) throw new Error(await getResponseError(response, action));

@@ -18,6 +18,26 @@ Open [http://localhost:3000](http://localhost:3000) with your browser to see the
 
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
+## Session refresh
+
+Authenticated API requests retry once after a `401` response. Concurrent requests
+in the same browser tab share a refresh request to `/api/v1/auth/refresh`.
+The new access token, and a rotated refresh token if returned, are saved for
+later requests. If the refresh token is rejected, the session is cleared and
+the request reports that the user should sign in again. Network or server
+errors are reported without clearing the session.
+
+The original `401` may still appear in the browser's Network tab even when
+the refresh and retry succeed.
+
+## Personal details requests
+
+On the Profile page, use the pencil icon under Personal details to submit
+changes for admin approval. The displayed profile remains unchanged until the
+backend returns approved values. The Pending requests tab shows outstanding
+personal requests and can refresh their status; approved and rejected history
+is not available from the current employee profile API.
+
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
 ## Learn More

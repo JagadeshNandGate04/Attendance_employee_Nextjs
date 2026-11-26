@@ -1,3 +1,4 @@
+import { authenticatedFetch } from "../auth/authenticatedFetch";
 import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
 
 export interface AttendanceEmployee {
@@ -131,7 +132,7 @@ const getAuthHeaders = (): HeadersInit => {
 };
 
 const fetchAttendanceData = async <T,>(url: string): Promise<T> => {
-  const response = await fetch(url, { headers: getAuthHeaders() });
+  const response = await authenticatedFetch(url, { headers: getAuthHeaders() });
   let result: ApiResponse<T>;
 
   try {

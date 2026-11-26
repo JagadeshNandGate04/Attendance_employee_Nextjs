@@ -1,6 +1,7 @@
 import { configureStore } from '@reduxjs/toolkit'
 import { combineReducers } from "redux";
-import authReducer from "./auth/authSlice";
+import authReducer, { performLogout, refreshAuthToken } from "./auth/authSlice";
+import { configureAuthenticatedFetch } from "./auth/authenticatedFetch";
 import attendanceReducer from "./attendance/attendanceSlice";
 import requestReducer from "./request/requestSlice";
 import notificationReducer from "./notifications/notificationSlice";
@@ -25,6 +26,11 @@ const rootReducer = combineReducers({
 
 export const store = configureStore({
   reducer: rootReducer
+});
+
+configureAuthenticatedFetch({
+  refresh: () => store.dispatch(refreshAuthToken()),
+  logout: () => store.dispatch(performLogout()),
 });
 
 // Type definitions
